@@ -8,20 +8,17 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    String imageName = "lena.png";
+    // construction des chemins vers les répertoires
+    int indexSequence = 0;
+    String s_index = (indexSequence>9)
+            ? std::to_string(indexSequence)
+            : "0"+std::to_string(indexSequence);
 
-    std::cout << "lecture de l'image '" + imageName + "'...\n";
-    Mat image = imread(imageName);
+    String imageFolder = "dataset/sequences/" + s_index + "/image0/";
+    String groundTruthFile = "poses/" + s_index + ".txt";
 
-    namedWindow("test", WINDOW_AUTOSIZE);
-
-    std::cout << "affichage de l'image...\n";
-    imshow("test", image);
-    std::cout << imageName + " affichée.\n";
-
-    waitKey(0);
-
-    destroyAllWindows();
+    // chargement des vérités terrain
+    // à faire
 
     return a.exec();
 }
