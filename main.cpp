@@ -17,8 +17,21 @@ int main(int argc, char *argv[])
     String imageFolder = "dataset/sequences/" + s_index + "/image0/";
     String groundTruthFile = "poses/" + s_index + ".txt";
 
-    // chargement des vérités terrain
+    // chargement des vérités terrain et création de la matrice(?) K
     // à faire
+
+    int numberOfTests = 100;
+
+    // initialisation des matrices(?) d'erreurs
+    // à faire
+
+    for(int i=0; i<numberOfTests; i++){
+
+        int indexImage1 = i;
+        int indexImage2 = i+1;
+
+
+    }
 
     return a.exec();
 }
