@@ -105,9 +105,17 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    int numberOfTests = 100;
+    const int numberOfTests = 500;
 
     // initialization of errors matrices
+    MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
+    MatrixXd errorTOpt  =   Matrix<double, numberOfTests, 3, RowMajor>();  errorTOpt.setZero();
+    MatrixXd errorR     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorR.setZero();
+    MatrixXd errorROpt  =   Matrix<double, numberOfTests, 3, RowMajor>();  errorROpt.setZero();
+    MatrixXd errorStart =   Matrix<double, numberOfTests, 1>();  errorStart.setZero();
+    MatrixXd errorStop  =   Matrix<double, numberOfTests, 1>();  errorStop.setZero();
+
+    // usage of fastVisualOdometry (python version ln. 91-93)
     // todo
 
     for(int i=0; i<numberOfTests; i++){
@@ -115,6 +123,10 @@ int main(int argc, char *argv[])
         int indexImage1 = i;
         int indexImage2 = i+1;
 
+        // paths to the 2 images we are working with in the loop
+        // todo
+
+        // Motion from ground truth
         // todo
     }
 
