@@ -143,10 +143,10 @@ int main(int argc, char *argv[])
 
         MatrixXd motionGt = gt1.inverse() * gt2;
         MatrixXd RGt = motionGt.block(0, 0, 3, 3).tranpose();
-        MatrixXd tGt = -RGt * motionGt.block(0, 3, 1, 3);
+        MatrixXd tGt = -RGt * motionGt.block(0, 3, 3, 1);
         tGt = tGt / tGt.norm();
 
-        MatrixXd scale = motionGt.lbock(0, 3, 1, 3).norm();
+        MatrixXd scale = motionGt.block(0, 3, 3, 1).norm();
 
     }
 
