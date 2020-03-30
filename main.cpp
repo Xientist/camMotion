@@ -57,6 +57,31 @@ vector< vector<double> > loadtxt(string file){
     return data;
 }
 
+MatrixXd GemanMcClure(vector<double> x){
+
+    ArrayXd x1 = Map< ArrayXd >(x.data(), x.size());
+    x1 = 1+x1;
+
+    ArrayXd x12(x1.pow(2));
+
+    ArrayXd x13(x1 * x12);
+
+    x1 = 0.5*(x1-1) / x1;
+    x12 = 0.5 / x12;
+    x13 = -1 / x13;
+
+    ArrayXd temp(x.size()*3);
+    temp << x1, x12, x13;
+
+    // Function, First Derivative, Second Derivative
+    double *data = temp.data();
+    Map< Matrix<double, 3, Dynamic, RowMajor> > output(data, 3, x.size());
+
+    // std::cout << output << std::endl;
+
+    return output;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
