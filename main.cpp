@@ -152,7 +152,27 @@ int main(int argc, char *argv[])
         // todo
 
         // Motion from ground truth
-        // todo
+        MatrixXd gt1(4,4);
+        gt1 << 1.0, 0.0, 0.0, 0.0,
+               0.0, 1.0, 0.0, 0.0,
+               0.0, 0.0, 1.0, 0.0,
+               0.0, 0.0, 0.0, 1.0;
+        gt1 << gt[indexImage1];
+
+        MatrixXd gt2(4,4);
+        gt2 << 1.0, 0.0, 0.0, 0.0,
+               0.0, 1.0, 0.0, 0.0,
+               0.0, 0.0, 1.0, 0.0,
+               0.0, 0.0, 0.0, 1.0;
+        gt2 << gt[indexImage2];
+
+        MatrixXd motionGt = gt1.inverse() * gt2;
+        MatrixXd RGt = motionGt.block(0, 0, 3, 3).tranpose();
+        MatrixXd tGt = -RGt * motionGt.block(0, 3, 3, 1);
+        tGt = tGt / tGt.norm();
+
+        MatrixXd scale = motionGt.block(0, 3, 3, 1).norm();
+
     }
 
     return a.exec();
