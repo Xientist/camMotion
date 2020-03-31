@@ -15,7 +15,10 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-        main.cpp
+        main.cpp \
+    getCorrespondences/GetCorrespondences.cpp \
+    getCorrespondences/isprocessor2.cpp \
+    getCorrespondences/integralimage.cpp
 
 INCLUDEPATH += /usr/local/include/opencv4/
 
@@ -32,4 +35,8 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    basicGeometry.h
+    basicGeometry.h \
+    getCorrespondences/isprocessor2.h \
+    getCorrespondences/cdcorner.h \
+    getCorrespondences/gsmean.h \
+    getCorrespondences/integralimage.h
