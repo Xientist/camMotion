@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <eigen3/Eigen/Dense>
+#include "getCorrespondences/GetCorrespondences.cpp"
 
 using std::vector;
 using std::string;
@@ -149,7 +150,9 @@ int main(int argc, char *argv[])
         int indexImage2 = i+1;
 
         // paths to the 2 images we are working with in the loop
-        // todo
+        //todo
+        string imageFile1;
+        string imageFile2;
 
         // Motion from ground truth
         MatrixXd gt1(4,4);
@@ -172,6 +175,13 @@ int main(int argc, char *argv[])
         tGt = tGt / tGt.norm();
 
         double scale = motionGt.block(0, 3, 3, 1).norm();
+
+        // Estimated Motion
+        MatrixXd matches = getCorrespondences(imageFile1, imageFile2);
+        MatrixXd matches1 = matches.block(0, 0, matches.rows(), 2);
+        MatrixXd matches2 = matches.block(0, 2, matches.rows(), 2);
+
+        MatrixXd dist = (matches1.block(0, 0, matches1.rows(), 1) * matches1.block(0, 0, matches1.rows(), 1)) + (matches1.block(0, 1, matches1.rows(), 1) * matches1.block(0, 1, matches1.rows(), 1));
 
     }
 
