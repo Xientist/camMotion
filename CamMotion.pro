@@ -30,3 +30,6 @@ LIBS += /usr/local/lib/libopencv_calib3d.so
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+HEADERS += \
+    basicGeometry.h
