@@ -150,6 +150,7 @@ int main(int argc, char *argv[])
         int indexImage2 = i+1;
 
         // paths to the 2 images we are working with in the loop
+        //todo
         string imageFile1;
         string imageFile2;
 
