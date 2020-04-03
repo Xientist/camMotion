@@ -5,7 +5,8 @@
 #include <vector>
 #include <fstream>
 #include <eigen3/Eigen/Dense>
-#include "getCorrespondences/GetCorrespondences.cpp"
+#include <getCorrespondences/GetCorrespondences.cpp>
+#include <basicGeometry.h>
 
 using std::vector;
 using std::string;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[])
             ? std::to_string(indexSequence)
             : "0"+std::to_string(indexSequence);
 
-    string imageFolder = "dataset/sequences/" + s_index + "/image0/";
+    string imageFolder = "dataset/sequences/" + s_index + "/image_0/";
     string groundTruthFile = "poses/" + s_index + ".txt";
     string calibFile = "dataset/sequences/" + s_index + "/calib.txt";
 
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 500;
+    const int numberOfTests = 100;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
@@ -150,9 +151,16 @@ int main(int argc, char *argv[])
         int indexImage2 = i+1;
 
         // paths to the 2 images we are working with in the loop
-        //todo
-        string imageFile1;
-        string imageFile2;
+        string sindex1 = std::to_string(indexImage1);
+        string sindex2 = std::to_string(indexImage2);
+
+        const int number_of_zeros = 6;
+
+        sindex1 = std::string(number_of_zeros - sindex1.length(), '0') + sindex1;
+        sindex2 = std::string(number_of_zeros - sindex2.length(), '0') + sindex2;
+
+        string imageFile1 = imageFolder + sindex1 + ".png";
+        string imageFile2 = imageFolder + sindex2 + ".png";
 
         // Motion from ground truth
         MatrixXd gt1(4,4);
@@ -160,14 +168,18 @@ int main(int argc, char *argv[])
                0.0, 1.0, 0.0, 0.0,
                0.0, 0.0, 1.0, 0.0,
                0.0, 0.0, 0.0, 1.0;
-        gt1 << gt[indexImage1];
+        gt1.row(0) = gt[indexImage1].row(0);
+        gt1.row(1) = gt[indexImage1].row(1);
+        gt1.row(2) = gt[indexImage1].row(2);
 
         MatrixXd gt2(4,4);
         gt2 << 1.0, 0.0, 0.0, 0.0,
                0.0, 1.0, 0.0, 0.0,
                0.0, 0.0, 1.0, 0.0,
                0.0, 0.0, 0.0, 1.0;
-        gt2 << gt[indexImage2];
+        gt2.row(0) = gt[indexImage2].row(0);
+        gt2.row(1) = gt[indexImage2].row(1);
+        gt2.row(2) = gt[indexImage2].row(2);
 
         MatrixXd motionGt = gt1.inverse() * gt2;
         MatrixXd RGt = motionGt.block(0, 0, 3, 3).transpose();
@@ -181,9 +193,9 @@ int main(int argc, char *argv[])
         MatrixXd matches1 = matches.block(0, 0, matches.rows(), 2);
         MatrixXd matches2 = matches.block(0, 2, matches.rows(), 2);
 
-        MatrixXd dist = (matches1.block(0, 0, matches1.rows(), 1) * matches1.block(0, 0, matches1.rows(), 1)) + (matches1.block(0, 1, matches1.rows(), 1) * matches1.block(0, 1, matches1.rows(), 1));
-
+        MatrixXd dist = matches1.block(0, 0, matches1.rows(), 1).array().square() + matches1.block(0, 1, matches1.rows(), 1).array().square();
     }
 
+    std::cout << "Algorithm OK." << std::endl;
     return a.exec();
 }

@@ -2,7 +2,9 @@
 #include "opencv2/opencv.hpp"
 #include "string.h"
 #include "iostream"
+#include <eigen3/Eigen/Dense>
 
+using namespace Eigen;
 
 #define CORNERS_DATA 1024
 #define CDIMAGE_MEANWIDTH 7
@@ -72,7 +74,7 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
     int numberOfCorrespondences = isprocessor->getNumberOfCorrespondences();
     
     //std::cout << numberOfCorrespondences << std::endl;
-    MatrixXd corners(numberOfCorresopndences, 4);
+    MatrixXd corners(numberOfCorrespondences, 4);
     for( int i (0); i < numberOfCorrespondences; i++)
     {
         ISProcessor2::Correspondence *tempCorrespondence = &correspondences[i];
