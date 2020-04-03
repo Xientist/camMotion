@@ -183,6 +183,17 @@ int main(int argc, char *argv[])
 
         MatrixXd dist = (matches1.block(0, 0, matches1.rows(), 1) * matches1.block(0, 0, matches1.rows(), 1)) + (matches1.block(0, 1, matches1.rows(), 1) * matches1.block(0, 1, matches1.rows(), 1));
 
+        cv::Mat E = cv2.findEssentialMat(matches1, matches2, K);
+        Map<MatrixXd> inliers(E.data());
+
+        MatrixXd matchesInliers1(matches.rows(), 2);
+        MatrixXd matchesInliers2(matches.rows(), 2);
+        for(int k = 0; k < matches.rows(); k++){
+            if(inliers(k) == 1){
+                matchesInliers1 << matches1.block(k, 0, 1, 2);
+                matchesInliers2 << matches2.block(k, 0, 1, 2);
+            }
+        }
     }
 
     return a.exec();
