@@ -3,16 +3,20 @@
 
 #include <eigen3/Eigen/Dense>
 #include <cmath>
-using namespace Eigen;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::Vector4d;
+
+namespace basicGeometry {
 
 MatrixXd Homogeneous(const MatrixXd& M){
 
     MatrixXd mat = M;
     mat.conservativeResize(mat.rows(), mat.cols()+1);
 
-    VectorXd vec = VectorXd();
-    vec.resize(mat.cols());
-    vec.Ones();
+    VectorXd vec = VectorXd(mat.rows());
+    vec.setOnes();
 
     mat.col(mat.cols()-1) = vec;
 
@@ -83,6 +87,8 @@ Vector3d EquatorialPointFromQ(Vector4d q){
     den = 1 / (1+q3);
 
     return Vector3d(q0*den, q1*den, q2*den);
+}
+
 }
 
 #endif // BASICGEOMETRY_H
