@@ -6,6 +6,8 @@
 #include <fstream>
 #include <eigen3/Eigen/Dense>
 #include "getCorrespondences/GetCorrespondences.cpp"
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/eigen.hpp>
 
 using std::vector;
 using std::string;
@@ -93,7 +95,7 @@ int main(int argc, char *argv[])
             ? std::to_string(indexSequence)
             : "0"+std::to_string(indexSequence);
 
-    string imageFolder = "dataset/sequences/" + s_index + "/image0/";
+    string imageFolder = "dataset/sequences/" + s_index + "/image_0/";
     string groundTruthFile = "poses/" + s_index + ".txt";
     string calibFile = "dataset/sequences/" + s_index + "/calib.txt";
 
@@ -150,9 +152,16 @@ int main(int argc, char *argv[])
         int indexImage2 = i+1;
 
         // paths to the 2 images we are working with in the loop
-        //todo
-        string imageFile1;
-        string imageFile2;
+        string sindex1 = std::to_string(indexImage1);
+        string sindex2 = std::to_string(indexImage2);
+
+        const int number_of_zeros = 6;
+
+        sindex1 = std::string(number_of_zeros - sindex1.length(), '0') + sindex1;
+        sindex2 = std::string(number_of_zeros - sindex2.length(), '0') + sindex2;
+
+        string imageFile1 = imageFolder + sindex1 + ".png";
+        string imageFile2 = imageFolder + sindex2 + ".png";
 
         // Motion from ground truth
         MatrixXd gt1(4,4);
@@ -160,14 +169,18 @@ int main(int argc, char *argv[])
                0.0, 1.0, 0.0, 0.0,
                0.0, 0.0, 1.0, 0.0,
                0.0, 0.0, 0.0, 1.0;
-        gt1 << gt[indexImage1];
+        gt1.row(0) = gt[indexImage1].row(0);
+        gt1.row(1) = gt[indexImage1].row(1);
+        gt1.row(2) = gt[indexImage1].row(2);
 
         MatrixXd gt2(4,4);
         gt2 << 1.0, 0.0, 0.0, 0.0,
                0.0, 1.0, 0.0, 0.0,
                0.0, 0.0, 1.0, 0.0,
                0.0, 0.0, 0.0, 1.0;
-        gt2 << gt[indexImage2];
+        gt2.row(0) = gt[indexImage2].row(0);
+        gt2.row(1) = gt[indexImage2].row(1);
+        gt2.row(2) = gt[indexImage2].row(2);
 
         MatrixXd motionGt = gt1.inverse() * gt2;
         MatrixXd RGt = motionGt.block(0, 0, 3, 3).transpose();
@@ -181,20 +194,33 @@ int main(int argc, char *argv[])
         MatrixXd matches1 = matches.block(0, 0, matches.rows(), 2);
         MatrixXd matches2 = matches.block(0, 2, matches.rows(), 2);
 
-        MatrixXd dist = (matches1.block(0, 0, matches1.rows(), 1) * matches1.block(0, 0, matches1.rows(), 1)) + (matches1.block(0, 1, matches1.rows(), 1) * matches1.block(0, 1, matches1.rows(), 1));
+        MatrixXd dist = matches1.block(0, 0, matches1.rows(), 1).array().square() + matches1.block(0, 1, matches1.rows(), 1).array().square();
 
-        cv::Mat E = cv2.findEssentialMat(matches1, matches2, K);
-        Map<MatrixXd> inliers(E.data());
+        cv::Mat m1;
+        cv::eigen2cv(matches1, m1);
+        cv::Mat m2;
+        cv::eigen2cv(matches2, m2);
+        cv::Mat Kcv;
+        cv::eigen2cv(K, Kcv);
+        cv::Mat mask;
+        cv::Mat E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+        MatrixXd inliers;
+        cv::cv2eigen(mask, inliers);
 
-        MatrixXd matchesInliers1(matches.rows(), 2);
-        MatrixXd matchesInliers2(matches.rows(), 2);
+        MatrixXd matchesInliers1(0, 2);
+        MatrixXd matchesInliers2(0, 2);
+        int l = 0;
         for(int k = 0; k < matches.rows(); k++){
             if(inliers(k) == 1){
-                matchesInliers1 << matches1.block(k, 0, 1, 2);
-                matchesInliers2 << matches2.block(k, 0, 1, 2);
+                matchesInliers1.conservativeResize(matchesInliers1.rows()+1, 2);
+                matchesInliers2.conservativeResize(matchesInliers2.rows()+1, 2);
+                matchesInliers1.row(l) = matches1.row(k);
+                matchesInliers2.row(l) = matches2.row(k);
+                l += 1;
             }
         }
     }
 
+    std::cout << "Algorithm OK." << std::endl;
     return a.exec();
 }
