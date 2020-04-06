@@ -8,6 +8,7 @@
 #include "getCorrespondences/GetCorrespondences.cpp"
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/eigen.hpp>
+#include "basicGeometry.h"
 
 using std::vector;
 using std::string;
@@ -219,6 +220,9 @@ int main(int argc, char *argv[])
                 l += 1;
             }
         }
+
+        MatrixXd points1 = (Kinv * (basicGeometry::Homogeneous(matchesInliers1).transpose())).transpose();
+        MatrixXd points2 = (Kinv * (basicGeometry::Homogeneous(matchesInliers2).transpose())).transpose();
     }
 
     std::cout << "Algorithm OK." << std::endl;
