@@ -2,6 +2,7 @@
 #define BASICGEOMETRY_H
 
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/SVD>
 #include <cmath>
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -75,7 +76,7 @@ Vector4d Matrix2Quaternion(const MatrixXd& M){
     return q;
 }
 
-Vector3d EquatorialPointFromQ(Vector4d q){
+Vector3d EquatorialPointFromQ(const Vector4d& q){
 
     double q0, q1, q2, q3, den;
 
@@ -87,6 +88,41 @@ Vector3d EquatorialPointFromQ(Vector4d q){
     den = 1 / (1+q3);
 
     return Vector3d(q0*den, q1*den, q2*den);
+}
+
+MatrixXd TriangulatePoints(const MatrixXd& projMat0, const MatrixXd& projMat1, const MatrixXd& points0, const MatrixXd& points1){
+
+    MatrixXd points(points0.rows(), 4);
+
+    MatrixXd A(4,4);
+    A.setZero();
+
+    for(int i=0; i<points0.rows(); i++){
+
+        A.row(0) = points0(i, 1) * projMat0.row(2) - projMat0.row(1);
+        A.row(1) = points0(i, 0) * projMat0.row(2) - projMat0.row(0);
+        A.row(2) = points1(i, 1) * projMat1.row(2) - projMat1.row(1);
+        A.row(3) = points1(i, 0) * projMat1.row(2) - projMat1.row(0);
+
+        Eigen::JacobiSVD<MatrixXd> svd(A);
+        MatrixXd V = svd.matrixV().transpose();
+        points.row(i) = V.col(V.cols()-1);
+    }
+
+    return points;
+}
+
+MatrixXd Homogenize(const MatrixXd& M){
+
+    VectorXd temp = M.col(M.cols()-1);
+    MatrixXd result = M;
+
+    for(int i=0; i< M.rows(); i++){
+
+        result.row(i) = result.row(i) / temp(i);
+    }
+
+    return result;
 }
 
 }

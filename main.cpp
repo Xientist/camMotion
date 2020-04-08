@@ -8,6 +8,8 @@
 #include "getCorrespondences/GetCorrespondences.cpp"
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/eigen.hpp>
+#include "epipolarGeometry.h"
+// #include "basicGeometry.h" (already included in "epipolarGeometry.h")
 
 using std::vector;
 using std::string;
@@ -219,6 +221,7 @@ int main(int argc, char *argv[])
                 l += 1;
             }
         }
+
     }
 
     std::cout << "Algorithm OK." << std::endl;

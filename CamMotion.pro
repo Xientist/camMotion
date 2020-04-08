@@ -36,6 +36,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     basicGeometry.h \
+    epipolarGeometry.h \
     getCorrespondences/cdcorner.h \
     getCorrespondences/gsmean.h \
     getCorrespondences/integralimage.h \
