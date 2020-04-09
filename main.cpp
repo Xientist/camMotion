@@ -87,6 +87,17 @@ MatrixXd GemanMcClure(vector<double> x){
     return output;
 }
 
+Vector3d rad2deg(Vector3d v){
+
+    double rollDeg, yawDeg, pitchDeg;
+
+    rollDeg = (v(0) * 180) / M_PI;
+    yawDeg = (v(1) * 180) / M_PI;
+    pitchDeg = (v(2) * 180) / M_PI;
+
+    return Vector3d(rollDeg, yawDeg, pitchDeg);
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -224,6 +235,32 @@ int main(int argc, char *argv[])
 
         MatrixXd points1 = (Kinv * (basicGeometry::Homogeneous(matchesInliers1).transpose())).transpose();
         MatrixXd points2 = (Kinv * (basicGeometry::Homogeneous(matchesInliers2).transpose())).transpose();
+
+        MatrixXd Ematrix;
+        cv::cv2eigen(E, Ematrix);
+        decomposedMatrix dm = DecomposeEssentialMatrix(Ematrix, points1, points2);
+
+        //traj
+
+        int r = points1.rows();
+        l = 0;
+        MatrixXd temp1(0, points1.cols());
+        MatrixXd temp2(0, points2.cols());
+        for(int k = 0; k < r; k++){
+            if(dm.inliers(k) == 1){
+                temp1.conservativeResize(temp1.rows()+1, points1.cols());
+                temp2.conservativeResize(temp2.rows()+1, points2.cols());
+                temp1.row(l) = points1.row(k);
+                temp2.row(l) = points2.row(k);
+                l += 1;
+            }
+        }
+
+        errorT.row(i) = dm.t - tGt;
+        errorR.row(i) = rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(dm.R)) - rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(RGt));
+
+        Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
+        Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
     }
 
