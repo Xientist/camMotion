@@ -4,10 +4,14 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/SVD>
 #include "basicGeometry.h"
+#include <vector>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::BDCSVD;
+using Eigen::ComputeFullU;
+using Eigen::ComputeFullV;
+using std::vector;
 
 struct decomposedMatrix{
 
@@ -19,13 +23,13 @@ struct decomposedMatrix{
 
 decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& points0, const MatrixXd& points1){
 
-    MatrixXd rotations[2];
-    rotations[0](3,3);
-    rotations[1](3,3);
+    vector<MatrixXd> rotations;
+    rotations.push_back(MatrixXd(3,3));
+    rotations.push_back(MatrixXd(3,3));
 
-    VectorXd translations[2];
-    translations[0](3);
-    translations[1](3);
+    std::vector<VectorXd> translations;
+    translations.push_back(VectorXd(3));
+    translations.push_back(VectorXd(3));
 
     MatrixXd W(3,3),Z(3,3);
 
@@ -38,7 +42,7 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             0,  0,  0;
 
     MatrixXd U, S, V;
-    BDCSVD<MatrixXd> svd(E);
+    BDCSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
     U = svd.matrixU();
     V = svd.matrixV();
 
@@ -63,16 +67,17 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
     translations[0] = t;
     translations[1] = -t;
 
-    MatrixXd projMat0(3,4), projMat1[4];
+    MatrixXd projMat0(3,4);
+    vector<MatrixXd> projMat1;
 
     projMat0 <<     1,  0,  0,  0,
                     0,  1,  0,  0,
-                    0,  0,  1,  0;
+                    0,  0,  1,  0;MatrixXd(1,1);
 
-    projMat1[0](3,4);
-    projMat1[1](3,4);
-    projMat1[2](3,4);
-    projMat1[3](3,4);
+    projMat1.push_back(MatrixXd(3,4));
+    projMat1.push_back(MatrixXd(3,4));
+    projMat1.push_back(MatrixXd(3,4));
+    projMat1.push_back(MatrixXd(3,4));
 
     projMat1[0] << rotations[0], translations[0];
     projMat1[1] << rotations[0], translations[1];
@@ -90,8 +95,8 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
         MatrixXd proj0 = ( projMat0 * (points.transpose()) ).transpose();
         MatrixXd proj1 = ( projMat1[i] * (points.transpose()) ).transpose();
 
-        VectorXd test0 = proj0.col(2) * points.col(3);
-        VectorXd test1 = proj1.col(2) * points.col(3);
+        VectorXd test0 = proj0.col(2).array() * points.col(3).array();
+        VectorXd test1 = proj1.col(2).array() * points.col(3).array();
 
         VectorXd test(test0.size());
 
@@ -111,12 +116,14 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             index = i;
             inliers = test;
 
-            pointsOut(numberOfInliers, points.cols());
+            pointsOut.resize(numberOfInliers, points.cols());
 
-            for(int j=0; j<inliers.size(); j++){
+            for(int j=0, k=0; j<inliers.size(), k<numberOfInliers; j++){
 
                 if(inliers(j) == 1){
-                    pointsOut << points.row(j);
+
+                    pointsOut.row(k) = points.row(j);
+                    k++;
                 }
             }
         }
@@ -156,14 +163,15 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
 
         default:
 
-            R(3,3);
+            R = MatrixXd(3,3);
             R <<    1,  0,  0,
                     0,  1,  0,
                     0,  0,  1;
-            t(3);
+            t = VectorXd(3);
             t.setZero();
-            points(0);
-            inliers(0);
+            points = MatrixXd();
+            inliers = VectorXd(points0.rows());
+            inliers.setZero();
             break;
     }
 

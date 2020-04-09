@@ -8,6 +8,8 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
+using Eigen::ComputeFullU;
+using Eigen::ComputeFullV;
 
 namespace basicGeometry {
 
@@ -104,7 +106,7 @@ MatrixXd TriangulatePoints(const MatrixXd& projMat0, const MatrixXd& projMat1, c
         A.row(2) = points1(i, 1) * projMat1.row(2) - projMat1.row(1);
         A.row(3) = points1(i, 0) * projMat1.row(2) - projMat1.row(0);
 
-        Eigen::JacobiSVD<MatrixXd> svd(A);
+        Eigen::JacobiSVD<MatrixXd> svd(A, ComputeFullU | ComputeFullV);
         MatrixXd V = svd.matrixV().transpose();
         points.row(i) = V.col(V.cols()-1);
     }
