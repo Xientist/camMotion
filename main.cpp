@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 500;
+    const int numberOfTests = 100;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
