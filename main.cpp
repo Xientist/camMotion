@@ -98,6 +98,13 @@ Vector3d rad2deg(Vector3d v){
     return Vector3d(rollDeg, yawDeg, pitchDeg);
 }
 
+string creerFichier(int i){
+    string name = "calculated_poses("+ std::to_string(i) +").txt";
+    std::ofstream fichier(name);
+    fichier.close();
+    return name;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -262,7 +269,12 @@ int main(int argc, char *argv[])
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
+        creerFichier(i);
+
     }
+
+    errorT = errorT.cwiseAbs();
+    errorR = errorR.cwiseAbs();
 
     std::cout << "Algorithm OK." << std::endl;
     return a.exec();

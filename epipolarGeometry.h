@@ -8,7 +8,7 @@
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
-using Eigen::BDCSVD;
+using Eigen::JacobiSVD;
 using Eigen::ComputeFullU;
 using Eigen::ComputeFullV;
 using std::vector;
@@ -42,7 +42,7 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             0,  0,  0;
 
     MatrixXd U, S, V;
-    BDCSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
+    JacobiSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
     U = svd.matrixU();
     V = svd.matrixV();
 
