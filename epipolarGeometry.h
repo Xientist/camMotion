@@ -5,6 +5,7 @@
 #include <eigen3/Eigen/SVD>
 #include "basicGeometry.h"
 #include <vector>
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -12,6 +13,8 @@ using Eigen::JacobiSVD;
 using Eigen::ComputeFullU;
 using Eigen::ComputeFullV;
 using std::vector;
+using std::cout;
+using std::endl;
 
 struct decomposedMatrix{
 
