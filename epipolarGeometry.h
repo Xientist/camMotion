@@ -3,6 +3,8 @@
 
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/SVD>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 #include "basicGeometry.h"
 #include <vector>
 #include <iostream>
@@ -45,9 +47,19 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             0,  0,  0;
 
     MatrixXd U, S, V;
-    JacobiSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
-    U = svd.matrixU();
-    V = svd.matrixV();
+    cv::Mat e, u, v;
+
+    cv::eigen2cv(E, e);
+
+    cv::SVD svd = cv::SVD(e);
+    u = svd.u;
+    v = svd.vt;
+
+    cv::cv2eigen(u, U);
+    cv::cv2eigen(v, V);
+
+    std::cout << U << std::endl;
+    std::cout << V << std::endl;
 
     rotations[0] = U*W*V;
     rotations[1] = U*(W.transpose())*V;
