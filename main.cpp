@@ -98,8 +98,19 @@ Vector3d rad2deg(Vector3d v){
     return Vector3d(rollDeg, yawDeg, pitchDeg);
 }
 
-string creerFichier(int i){
-    string name = "calculated_poses("+ std::to_string(i) +").txt";
+string creerFichier(){
+    string name = "calculated_poses";
+    if(FILE *file = fopen(name.c_str(), "r")){
+        fclose(file);
+        int i = 1;
+        name = name + "(" + std::to_string(i) +").txt";
+        while(file = fopen(name.c_str(), "r"))
+        {
+            i++;
+            fclose(file);
+            name = "calculated_poses(" + std::to_string(i) +").txt";
+        }
+    }
     std::ofstream fichier(name);
     fichier.close();
     return name;
@@ -153,7 +164,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 100;
+    const int numberOfTests = 1;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
@@ -269,7 +280,7 @@ int main(int argc, char *argv[])
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
-        creerFichier(i);
+        creerFichier();
 
     }
 
