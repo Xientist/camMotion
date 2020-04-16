@@ -58,20 +58,17 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
     cv::cv2eigen(u, U);
     cv::cv2eigen(v, V);
 
-    std::cout << U << std::endl;
-    std::cout << V << std::endl;
-
     rotations[0] = U*W*V;
     rotations[1] = U*(W.transpose())*V;
 
     if(rotations[0].determinant() < 0){
 
-        rotations[0] *= -rotations[0];
+        rotations[0] = -rotations[0];
     }
 
     if(rotations[1].determinant() < 0){
 
-        rotations[1] *= -rotations[1];
+        rotations[1] = -rotations[1];
     }
 
     S = U*Z*(U.transpose());
@@ -87,7 +84,7 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
 
     projMat0 <<     1,  0,  0,  0,
                     0,  1,  0,  0,
-                    0,  0,  1,  0;MatrixXd(1,1);
+                    0,  0,  1,  0;
 
     projMat1.push_back(MatrixXd(3,4));
     projMat1.push_back(MatrixXd(3,4));

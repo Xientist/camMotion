@@ -98,22 +98,28 @@ Vector3d rad2deg(Vector3d v){
     return Vector3d(rollDeg, yawDeg, pitchDeg);
 }
 
-string creerFichier(){
-    string name = "calculated_poses";
+std::ofstream createPoseFile(){
+
+    string name = "calculated_poses.txt";
+
     if(FILE *file = fopen(name.c_str(), "r")){
+
         fclose(file);
+
         int i = 1;
-        name = name + "(" + std::to_string(i) +").txt";
-        while(file = fopen(name.c_str(), "r"))
-        {
+        name = "calculated_poses(" + std::to_string(i) +").txt";
+
+        while(file = fopen(name.c_str(), "r")){
+
             i++;
             fclose(file);
             name = "calculated_poses(" + std::to_string(i) +").txt";
         }
     }
+
     std::ofstream fichier(name);
-    fichier.close();
-    return name;
+
+    return fichier;
 }
 
 int main(int argc, char *argv[])
@@ -164,7 +170,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 1;
+    const int numberOfTests = 128;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
@@ -176,6 +182,8 @@ int main(int argc, char *argv[])
 
     // usage of fastVisualOdometry (python version ln. 91-93)
     // todo
+
+    std::ofstream calculated_poses = createPoseFile();
 
     for(int i=0; i<numberOfTests; i++){
 
@@ -280,9 +288,18 @@ int main(int argc, char *argv[])
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
-        creerFichier();
+        for(int l=0; l<3; l++){
 
+            calculated_poses << dm.R(l,0) << " ";
+            calculated_poses << dm.R(l,1) << " ";
+            calculated_poses << dm.R(l,2) << " ";
+            calculated_poses << dm.t(l) << " ";
+        }
+
+        calculated_poses << std::endl;
     }
+
+    calculated_poses.close();
 
     errorT = errorT.cwiseAbs();
     errorR = errorR.cwiseAbs();
