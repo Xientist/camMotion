@@ -40,6 +40,7 @@ HEADERS += \
     getCorrespondences/cdcorner.h \
     getCorrespondences/gsmean.h \
     getCorrespondences/integralimage.h \
-    getCorrespondences/isprocessor2.h
+    getCorrespondences/isprocessor2.h \
+    diff.h
 
 QMAKE_CXXFLAGS += -mpopcnt

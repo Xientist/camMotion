@@ -288,6 +288,9 @@ int main(int argc, char *argv[])
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
+        points1 = temp1;
+        points2 = temp2;
+
         for(int l=0; l<3; l++){
 
             calculated_poses << dm.R(l,0) << " ";
