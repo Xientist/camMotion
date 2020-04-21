@@ -10,6 +10,9 @@
 #include <iostream>
 
 using Eigen::MatrixXd;
+using Eigen::Matrix;
+using Eigen::Dynamic;
+using Eigen::RowMajor;
 using Eigen::VectorXd;
 using Eigen::JacobiSVD;
 using Eigen::ComputeFullU;
@@ -47,16 +50,21 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             0,  0,  0;
 
     MatrixXd U, S, V;
-    cv::Mat e, u, v;
 
+//    JacobiSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
+
+//    U = svd.matrixU();
+//    S = svd.singularValues();
+//    V = svd.matrixV();
+
+    cv::Mat e, s, u, vt;
     cv::eigen2cv(E, e);
 
-    cv::SVD svd = cv::SVD(e);
-    u = svd.u;
-    v = svd.vt;
+    cv::SVD::compute(e, s, u, vt, cv::SVD::FULL_UV | cv::SVD::MODIFY_A);
 
     cv::cv2eigen(u, U);
-    cv::cv2eigen(v, V);
+    cv::cv2eigen(s, S);
+    cv::cv2eigen(vt, V);
 
     rotations[0] = U*W*V;
     rotations[1] = U*(W.transpose())*V;

@@ -98,26 +98,26 @@ Vector3d rad2deg(Vector3d v){
     return Vector3d(rollDeg, yawDeg, pitchDeg);
 }
 
-std::ofstream createPoseFile(){
+std::ofstream createFile(string name){
 
-    string name = "calculated_poses.txt";
+    string filename = name + ".txt";
 
-    if(FILE *file = fopen(name.c_str(), "r")){
+    if(FILE *file = fopen(filename.c_str(), "r")){
 
         fclose(file);
 
         int i = 1;
-        name = "calculated_poses(" + std::to_string(i) +").txt";
+        filename = name + "(" + std::to_string(i) +").txt";
 
-        while(file = fopen(name.c_str(), "r")){
+        while(file = fopen(filename.c_str(), "r")){
 
             i++;
             fclose(file);
-            name = "calculated_poses(" + std::to_string(i) +").txt";
+            filename = name + "(" + std::to_string(i) +").txt";
         }
     }
 
-    std::ofstream fichier(name);
+    std::ofstream fichier(filename);
 
     return fichier;
 }
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     // Paths to the sequences and poses folder
-    int indexSequence = 0;
+    int indexSequence = 7;
     string s_index = (indexSequence>9)
             ? std::to_string(indexSequence)
             : "0"+std::to_string(indexSequence);
@@ -144,7 +144,6 @@ int main(int argc, char *argv[])
 
     for(int i=0; i<vecPoses.size(); i++){
 
-        // might need to remove RowMajor?
         Matrix<double, 3, 4> mat = Map< Matrix<double, 3, 4, RowMajor> >(vecPoses[i].data());
         gt.push_back(mat);
 
@@ -157,7 +156,6 @@ int main(int argc, char *argv[])
 
     double *t2d = vec2d[0].data();
 
-    // might need to remove RowMajor?
     MatrixXd temp = Map< Matrix<double, 3, 4, RowMajor> >(t2d);
     MatrixXd K = temp.block(0, 0, 3, 3);
     MatrixXd Kinv = K.inverse();
@@ -170,7 +168,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 128;
+    const int numberOfTests = 500;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
@@ -183,7 +181,15 @@ int main(int argc, char *argv[])
     // usage of fastVisualOdometry (python version ln. 91-93)
     // todo
 
-    std::ofstream calculated_poses = createPoseFile();
+    std::ofstream calculated_poses = createFile("calculated_poses");
+
+    std::vector<MatrixXd> transformations;
+    MatrixXd m(4,4);
+    m << 1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0;
+    transformations.push_back(m);
 
     for(int i=0; i<numberOfTests; i++){
 
@@ -243,6 +249,7 @@ int main(int argc, char *argv[])
         cv::eigen2cv(K, Kcv);
         cv::Mat mask;
         cv::Mat E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+
         MatrixXd inliers;
         cv::cv2eigen(mask, inliers);
 
@@ -264,6 +271,7 @@ int main(int argc, char *argv[])
 
         MatrixXd Ematrix;
         cv::cv2eigen(E, Ematrix);
+
         decomposedMatrix dm = DecomposeEssentialMatrix(Ematrix, points1, points2);
 
         //traj
@@ -288,12 +296,33 @@ int main(int argc, char *argv[])
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
-        for(int l=0; l<3; l++){
+        VectorXd tPoses;
+        MatrixXd Rt = dm.R.transpose();
 
-            calculated_poses << dm.R(l,0) << " ";
-            calculated_poses << dm.R(l,1) << " ";
-            calculated_poses << dm.R(l,2) << " ";
-            calculated_poses << dm.t(l) << " ";
+        tPoses = -Rt * dm.t;
+        tPoses = tPoses * scale;
+        tPoses.conservativeResize(4);
+        tPoses(3) = 0;
+
+        MatrixXd transfo = Rt;
+        transfo.conservativeResize(4,4);
+        transfo.col(3) = tPoses;
+        transfo.row(3) << 0, 0, 0, 1;
+
+        MatrixXd Pose = transformations.back() * transfo;
+        transformations.push_back(Pose);
+    }
+
+    std::cout << "Algorithm OK." << std::endl;
+
+    for(int t=0; t<transformations.size(); t++){
+
+        for(int l=0; l<4; l++){
+
+            for(int m=0; m<4; m++){
+
+                calculated_poses << transformations[t](l, m) << " ";
+            }
         }
 
         calculated_poses << std::endl;
@@ -301,9 +330,10 @@ int main(int argc, char *argv[])
 
     calculated_poses.close();
 
+    std::cout << "Pose file written." << std::endl;
+
     errorT = errorT.cwiseAbs();
     errorR = errorR.cwiseAbs();
 
-    std::cout << "Algorithm OK." << std::endl;
     return a.exec();
 }
