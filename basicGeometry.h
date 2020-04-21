@@ -13,6 +13,21 @@ using Eigen::ComputeFullV;
 
 namespace basicGeometry {
 
+MatrixXd CrossProductMatrix(VectorXd vec){
+    MatrixXd crossMat = MatrixXd::Zero(3, 3);
+    //1st line
+    crossMat(0, 1) = -vec[2];
+    crossMat(0, 2) = vec[1];
+    //2nd line
+    crossMat(1, 0) = vec[2];
+    crossMat(1, 2) = -vec[0];
+    //3rd line
+    crossMat(2, 0) = -vec[1];
+    crossMat(2, 1) = vec[0];
+
+    return crossMat;
+}
+
 MatrixXd Homogeneous(const MatrixXd& M){
 
     MatrixXd mat = M;
@@ -35,6 +50,31 @@ Vector3d RotationMatrix2PitchYawRoll(const MatrixXd& R){
     pitch   = atan2( R(2,1), R(2,2) );
 
     return Vector3d(roll, yaw, pitch);
+}
+
+MatrixXd Quaternion2Matrix(VectorXd q){
+    MatrixXd M(3, 3);
+    double w = q[0];
+    double x = q[1];
+    double y = q[2];
+    double z = q[3];
+
+    double x2 = x*x;
+    double y2 = y*y;
+    double z2 = z*z;
+
+    double xy = x*y;
+    double xz = x*z;
+    double xw = x*w;
+    double yz = y*z;
+    double yw = y*w;
+    double zw = z*w;
+
+    M << 1.0-2.0*(y2+z2), 2.0*(xy-zw), 2.0*(xz+yw),
+         2.0*(xy+zw), 1.0-2.0*(x2+z2), 2.0*(yz-xw),
+         2.0*(xz-yw), 2.0*(yz+xw), 1.0-2.0*(x2+y2);
+
+    return M;
 }
 
 Vector4d Matrix2Quaternion(const MatrixXd& M){
