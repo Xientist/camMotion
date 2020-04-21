@@ -191,6 +191,8 @@ int main(int argc, char *argv[])
          0.0, 0.0, 0.0, 1.0;
     transformations.push_back(m);
 
+    std::cout << "processing..." << std::endl;
+
     for(int i=0; i<numberOfTests; i++){
 
         int indexImage1 = i;
@@ -248,7 +250,23 @@ int main(int argc, char *argv[])
         cv::Mat Kcv;
         cv::eigen2cv(K, Kcv);
         cv::Mat mask;
-        cv::Mat E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+        cv::Mat E(3,3,CV_64FC1);
+        E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+
+        std::cout << "E[" << i << "]" << std::endl;
+        std::cout << E << std::endl;
+
+        std::ofstream e("E.txt");
+
+        for(int k=0; k<3; k++){
+
+            for(int l=0; l<3; l++){
+
+                e << E.at<double>(k, l) << " ";
+            }
+        }
+
+        e.close();
 
         MatrixXd inliers;
         cv::cv2eigen(mask, inliers);
@@ -269,10 +287,13 @@ int main(int argc, char *argv[])
         MatrixXd points1 = (Kinv * (basicGeometry::Homogeneous(matchesInliers1).transpose())).transpose();
         MatrixXd points2 = (Kinv * (basicGeometry::Homogeneous(matchesInliers2).transpose())).transpose();
 
-        MatrixXd Ematrix;
-        cv::cv2eigen(E, Ematrix);
+        decomposedMatrix dm = DecomposeEssentialMatrix(E, points1, points2);
 
-        decomposedMatrix dm = DecomposeEssentialMatrix(Ematrix, points1, points2);
+        std::cout << "R:" << std::endl;
+        std::cout << dm.R << std::endl;
+
+        std::cout << "t:" << std::endl;
+        std::cout << dm.t << std::endl;
 
         //traj
 
@@ -310,6 +331,7 @@ int main(int argc, char *argv[])
         transfo.row(3) << 0, 0, 0, 1;
 
         MatrixXd Pose = transformations.back() * transfo;
+
         transformations.push_back(Pose);
     }
 

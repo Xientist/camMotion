@@ -1,10 +1,6 @@
 #ifndef EPIPOLARGEOMETRY_H
 #define EPIPOLARGEOMETRY_H
 
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/SVD>
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/eigen.hpp>
 #include "basicGeometry.h"
 #include <vector>
 #include <iostream>
@@ -29,7 +25,7 @@ struct decomposedMatrix{
     MatrixXd points;
 };
 
-decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& points0, const MatrixXd& points1){
+decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& Eold, const MatrixXd& points0, const MatrixXd& points1){
 
     vector<MatrixXd> rotations;
     rotations.push_back(MatrixXd(3,3));
@@ -39,53 +35,89 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
     translations.push_back(VectorXd(3));
     translations.push_back(VectorXd(3));
 
-    MatrixXd W(3,3),Z(3,3);
-
-    W <<    0,  1,  0,
-           -1,  0,  0,
-            0,  0,  1;
-
-    Z <<    0,  1,  0,
-           -1,  0,  0,
-            0,  0,  0;
-
-    MatrixXd U, S, V;
-
 //    JacobiSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
 
 //    U = svd.matrixU();
 //    S = svd.singularValues();
 //    V = svd.matrixV();
 
-    cv::Mat e, s, u, vt;
-    cv::eigen2cv(E, e);
+    std::string filename = "E.txt";
+    std::ifstream fileStream(filename);
 
-    cv::SVD::compute(e, s, u, vt, cv::SVD::FULL_UV | cv::SVD::MODIFY_A);
+    cv::Mat E(3,3,CV_64FC1), W(3,3,CV_64FC1, double(0)), Z(3,3,CV_64FC1, double(0));
+    cv::Mat R1(3,3,CV_64FC1), R2(3,3,CV_64FC1), S(3,3,CV_64FC1);
 
-    cv::cv2eigen(u, U);
-    cv::cv2eigen(s, S);
-    cv::cv2eigen(vt, V);
-
-    rotations[0] = U*W*V;
-    rotations[1] = U*(W.transpose())*V;
-
-    if(rotations[0].determinant() < 0){
-
-        rotations[0] = -rotations[0];
+    int cols = 3;
+    double m;
+    int cnt = 0;//index starts from 0
+    while (fileStream >> m)
+    {
+        int temprow = cnt / cols;
+        int tempcol = cnt % cols;
+        E.at<double>(temprow, tempcol) = m;
+        cnt++;
     }
 
-    if(rotations[1].determinant() < 0){
+    fileStream.close();
 
-        rotations[1] = -rotations[1];
+//    std::cout << E << std::endl;
+
+    cv::Mat t(3,1,CV_64FC1);
+
+    W.at<double>(0,1) = 1;
+    W.at<double>(1,0) = -1;
+    W.at<double>(2,2) = 1;
+
+    Z.at<double>(1,0) = -1;
+    Z.at<double>(0,1) = 1;
+
+    cv::Mat w,u,vt;
+
+    cv::SVDecomp(E,w,u,vt);
+
+//    std::cout << w << std::endl;
+//    std::cout << u << std::endl;
+//    std::cout << vt << std::endl;
+
+    R1 = u * W * vt;
+    R2 = u * W.t() * vt;
+
+    if (cv::determinant(R1) < 0)
+    {
+        R1 *= -1;
+    }
+    if (cv::determinant(R2) < 0)
+    {
+        R2 *= -1;
     }
 
-    S = U*Z*(U.transpose());
+    S = u * Z * u.t();
 
-    VectorXd t(3);
-    t << S(2,1), S(0,2), S(1,0);
+//    std::cout << "R1" << std::endl;
+//    std::cout << R1 << std::endl;
 
-    translations[0] = t;
-    translations[1] = -t;
+//    std::cout << "R2" << std::endl;
+//    std::cout << R2 << std::endl;
+
+    S = u * Z * u.t();
+//    std::cout << "S" << std::endl;
+//    std::cout << S << std::endl;
+
+    t.at<double>(0,0) = S.at<double>(2,1);
+    t.at<double>(1,0) = S.at<double>(0,2);
+    t.at<double>(2,0) = S.at<double>(1,0);
+
+//    std::cout << "t" << std::endl;
+//    std::cout << t << std::endl;
+
+    VectorXd T;
+    cv::cv2eigen(t, T);
+
+    translations[0] = T;
+    translations[1] = -T;
+
+    cv::cv2eigen(R1, rotations[0]);
+    cv::cv2eigen(R2, rotations[1]);
 
     MatrixXd projMat0(3,4);
     vector<MatrixXd> projMat1;
@@ -156,28 +188,28 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
         case 0:
 
             R = rotations[0];
-            t = translations[0];
+            T = translations[0];
             points = basicGeometry::Homogenize(pointsOut);
             break;
 
         case 1:
 
             R = rotations[0];
-            t = translations[1];
+            T = translations[1];
             points = basicGeometry::Homogenize(pointsOut);
             break;
 
         case 2:
 
             R = rotations[1];
-            t = translations[0];
+            T = translations[0];
             points = basicGeometry::Homogenize(pointsOut);
             break;
 
         case 3:
 
             R = rotations[1];
-            t = translations[1];
+            T = translations[1];
             points = basicGeometry::Homogenize(pointsOut);
             break;
 
@@ -187,19 +219,19 @@ decomposedMatrix DecomposeEssentialMatrix(const MatrixXd& E, const MatrixXd& poi
             R <<    1,  0,  0,
                     0,  1,  0,
                     0,  0,  1;
-            t = VectorXd(3);
-            t.setZero();
+            T = VectorXd(3);
+            T.setZero();
             points = MatrixXd();
             inliers = VectorXd(points0.rows());
             inliers.setZero();
             break;
     }
 
-    t.normalize();
+    T.normalize();
 
     decomposedMatrix dm;
     dm.R = R;
-    dm.t = t;
+    dm.t = T;
     dm.points = points;
     dm.inliers = inliers;
 
