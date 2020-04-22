@@ -1,13 +1,15 @@
-#include <QCoreApplication>
+//#include <QCoreApplication>
 //#include <opencv2/opencv.hpp>
+#include <QElapsedTimer>
+#include <QDebug>
 #include <string.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 #include "getCorrespondences/GetCorrespondences.cpp"
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/eigen.hpp>
+//#include <opencv2/opencv.hpp>
+//#include <opencv2/core/eigen.hpp>
 #include "epipolarGeometry.h"
 // #include "basicGeometry.h" (already included in "epipolarGeometry.h")
 
@@ -109,7 +111,7 @@ std::ofstream createFile(string name){
         int i = 1;
         filename = name + "(" + std::to_string(i) +").txt";
 
-        while(file = fopen(filename.c_str(), "r")){
+        while((file = fopen(filename.c_str(), "r"))){
 
             i++;
             fclose(file);
@@ -124,7 +126,7 @@ std::ofstream createFile(string name){
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
+    //QCoreApplication a(argc, argv);
 
     // Paths to the sequences and poses folder
     int indexSequence = 7;
@@ -195,6 +197,10 @@ int main(int argc, char *argv[])
 
     for(int i=0; i<numberOfTests; i++){
 
+//        double time, subtime;
+//        QElapsedTimer timer, subtimer;
+//        timer.start();
+
         int indexImage1 = i;
         int indexImage2 = i+1;
 
@@ -237,7 +243,10 @@ int main(int argc, char *argv[])
         double scale = motionGt.block(0, 3, 3, 1).norm();
 
         // Estimated Motion
+//        subtimer.start();
         MatrixXd matches = getCorrespondences(imageFile1, imageFile2);
+//        subtime = subtimer.elapsed();
+
         MatrixXd matches1 = matches.block(0, 0, matches.rows(), 2);
         MatrixXd matches2 = matches.block(0, 2, matches.rows(), 2);
 
@@ -247,26 +256,24 @@ int main(int argc, char *argv[])
         cv::eigen2cv(matches1, m1);
         cv::Mat m2;
         cv::eigen2cv(matches2, m2);
-        cv::Mat Kcv;
+        cv::Mat Kcv(3,3,CV_64FC1);
         cv::eigen2cv(K, Kcv);
         cv::Mat mask;
         cv::Mat E(3,3,CV_64FC1);
+
         E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
 
-        std::cout << "E[" << i << "]" << std::endl;
-        std::cout << E << std::endl;
+//        std::ofstream e("E.txt");
 
-        std::ofstream e("E.txt");
+//        for(int k=0; k<3; k++){
 
-        for(int k=0; k<3; k++){
+//            for(int l=0; l<3; l++){
 
-            for(int l=0; l<3; l++){
+//                e << E.at<double>(k, l) << " ";
+//            }
+//        }
 
-                e << E.at<double>(k, l) << " ";
-            }
-        }
-
-        e.close();
+//        e.close();
 
         MatrixXd inliers;
         cv::cv2eigen(mask, inliers);
@@ -289,11 +296,11 @@ int main(int argc, char *argv[])
 
         decomposedMatrix dm = DecomposeEssentialMatrix(E, points1, points2);
 
-        std::cout << "R:" << std::endl;
-        std::cout << dm.R << std::endl;
+//        std::cout << "R:" << std::endl;
+//        std::cout << dm.R << std::endl;
 
-        std::cout << "t:" << std::endl;
-        std::cout << dm.t << std::endl;
+//        std::cout << "t:" << std::endl;
+//        std::cout << dm.t << std::endl;
 
         //traj
 
@@ -333,6 +340,12 @@ int main(int argc, char *argv[])
         MatrixXd Pose = transformations.back() * transfo;
 
         transformations.push_back(Pose);
+
+//        time = timer.elapsed();
+
+//        qDebug() << "Time elapsed for subcode: " << subtime;
+//        qDebug() << "Time elapsed for the whole loop: " << time;
+//        qDebug() << "Percentage of time taken by subcode: " << subtime / time * 100 << "%";
     }
 
     std::cout << "Algorithm OK." << std::endl;
@@ -357,5 +370,5 @@ int main(int argc, char *argv[])
     errorT = errorT.cwiseAbs();
     errorR = errorR.cwiseAbs();
 
-    return a.exec();
+    //return a.exec();
 }

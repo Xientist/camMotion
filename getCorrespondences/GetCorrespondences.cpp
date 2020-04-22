@@ -42,7 +42,7 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
 
     // Process
     ISProcessor2* isprocessor = new ISProcessor2(width, height, CORNERS_DATA);
-    
+
     // Find corners image 1
     IntegralImage integralImage1(width, height);
     integralImage1.setImage(image1);
@@ -58,7 +58,7 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
     
     CDCornerData* cornerImage2 = new CDCornerData[CORNERS_DATA];
     isprocessor->findCorners(image2, cornerImage2, integralImage2.imageBuffer());
-    
+
     // Corner matching
     isprocessor->setImage1(image1, cornerImage1);
     isprocessor->setCornersImage1(cornerImage1);
@@ -71,8 +71,9 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
 //    std::cout << "FB corner " << isprocessor->numberOfFBCorners() << std::endl;
 
     ISProcessor2::Correspondence* correspondences = isprocessor->getCorrespondences();
+
     int numberOfCorrespondences = isprocessor->getNumberOfCorrespondences();
-    
+
     //std::cout << numberOfCorrespondences << std::endl;
     MatrixXd corners(numberOfCorrespondences, 4);
     for( int i (0); i < numberOfCorrespondences; i++)
@@ -89,5 +90,4 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
     delete [] cornerImage2;
 
     return corners;
-    
 }

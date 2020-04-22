@@ -25,7 +25,7 @@ struct decomposedMatrix{
     MatrixXd points;
 };
 
-decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& Eold, const MatrixXd& points0, const MatrixXd& points1){
+decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& points0, const MatrixXd& points1){
 
     vector<MatrixXd> rotations;
     rotations.push_back(MatrixXd(3,3));
@@ -41,26 +41,25 @@ decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& Eold, const MatrixXd& p
 //    S = svd.singularValues();
 //    V = svd.matrixV();
 
-    std::string filename = "E.txt";
-    std::ifstream fileStream(filename);
-
-    cv::Mat E(3,3,CV_64FC1), W(3,3,CV_64FC1, double(0)), Z(3,3,CV_64FC1, double(0));
+//    cv::Mat E(3,3,CV_64FC1);
+    cv::Mat W(3,3,CV_64FC1, double(0)), Z(3,3,CV_64FC1, double(0));
     cv::Mat R1(3,3,CV_64FC1), R2(3,3,CV_64FC1), S(3,3,CV_64FC1);
 
-    int cols = 3;
-    double m;
-    int cnt = 0;//index starts from 0
-    while (fileStream >> m)
-    {
-        int temprow = cnt / cols;
-        int tempcol = cnt % cols;
-        E.at<double>(temprow, tempcol) = m;
-        cnt++;
-    }
+//    std::string filename = "E.txt";
+//    std::ifstream fileStream(filename);
 
-    fileStream.close();
+//    int cols = 3;
+//    double m;
+//    int cnt = 0;//index starts from 0
+//    while (fileStream >> m)
+//    {
+//        int temprow = cnt / cols;
+//        int tempcol = cnt % cols;
+//        E.at<double>(temprow, tempcol) = m;
+//        cnt++;
+//    }
 
-//    std::cout << E << std::endl;
+//    fileStream.close();
 
     cv::Mat t(3,1,CV_64FC1);
 
@@ -152,15 +151,17 @@ decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& Eold, const MatrixXd& p
 
         VectorXd test(test0.size());
 
+        int numberOfInliers = 0;
+
         for(int j=0; j<test0.size(); j++){
 
             test0(j) = (test0(j) > 0)? 1: 0;
             test1(j) = (test1(j) > 0)? 1: 0;
 
             test(j) = (test0(j)==1 && test1(j)==1)? 1: 0;
-        }
 
-        int numberOfInliers = test.sum();
+            numberOfInliers += test(j);
+        }
 
         if(numberOfInliers > bestProjMatSupport){
 
