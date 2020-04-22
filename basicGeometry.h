@@ -132,6 +132,16 @@ Vector3d EquatorialPointFromQ(const Vector4d& q){
     return Vector3d(q0*den, q1*den, q2*den);
 }
 
+Vector2d EquatorialPointFromT(Vector3d t, int d=1){
+    double t0 = t(0);
+    double t1 = t(1);
+    double t2 = t(2);
+
+    double factor = 1.0/(1.0 + t0);
+
+    return Vector2d(t1*factor, t2*factor);
+}
+
 MatrixXd TriangulatePoints(const MatrixXd& projMat0, const MatrixXd& projMat1, const MatrixXd& points0, const MatrixXd& points1){
 
     MatrixXd points(points0.rows(), 4);

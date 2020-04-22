@@ -9,6 +9,7 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/eigen.hpp>
 #include "epipolarGeometry.h"
+#include "diff.h"
 // #include "basicGeometry.h" (already included in "epipolarGeometry.h")
 
 using std::vector;
@@ -62,7 +63,7 @@ vector< vector<double> > loadtxt(string file){
     return data;
 }
 
-MatrixXd GemanMcClure(vector<double> x){
+MatrixXd GemanMcClure(VectorXd x){
 
     ArrayXd x1 = Map< ArrayXd >(x.data(), x.size());
     x1 = 1+x1;
@@ -85,6 +86,27 @@ MatrixXd GemanMcClure(vector<double> x){
     // std::cout << output << std::endl;
 
     return output;
+}
+
+VectorXd OptimizeRotationAndTranslation(VectorXd vec, MatrixXd points0, MatrixXd points1, MatrixXd JREVect, int factor = 1){
+
+    int numEssentialInliers = points0.rows();
+    VectorXd p = vec.head(3);
+    VectorXd t = vec.tail(vec.size()-3);
+
+    MatrixXd JEVect;
+    MatrixXd E = diff::GradientEssentialMatrixwrtVecTrans(p, t, factor, JEVect);
+
+    MatrixXd JREE(numEssentialInliers, 9);
+    VectorXd RE(numEssentialInliers);
+
+    for(int i = 0; i < numEssentialInliers; i++){
+        JREE.row(i) = diff::GradientSamsponErrorwrtEssentialMatrix(E, points0.row(i), points1.row(i), RE(i));
+    }
+
+    JREVect = JREE*JEVect;
+
+    return RE;
 }
 
 Vector3d rad2deg(Vector3d v){
@@ -282,14 +304,37 @@ int main(int argc, char *argv[])
             }
         }
 
+        points1 = temp1;
+        points2 = temp2;
+
         errorT.row(i) = dm.t - tGt;
         errorR.row(i) = rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(dm.R)) - rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(RGt));
 
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
-        points1 = temp1;
-        points2 = temp2;
+        int factor = 1;
+        Vector2d v = basicGeometry::EquatorialPointFromT(dm.t, factor);
+        VectorXd vec(5);
+        vec << u, v;
+
+        auto fun = [=](VectorXd x){
+            MatrixXd JREVect;
+            return OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
+        };
+        auto jac = [=](VectorXd x){
+            MatrixXd JREVect;
+            OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
+            return JREVect;
+        };
+        auto loss = [=](VectorXd x){
+            return GemanMcClure(x);
+        };
+
+        MatrixXd temp;
+        VectorXd vec2 = OptimizeRotationAndTranslation(vec, points1, points2, temp, factor);
+        vec2 = vec2 * vec2;
+        errorStart(i) = 0.5*(loss(vec2)(0));
 
         for(int l=0; l<3; l++){
 

@@ -13,6 +13,8 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+namespace diff{
+
 MatrixXd JacobianRotationwrtQuaternion(VectorXd q){
     MatrixXd J(9, 4);
     double w2 = 2.0*q[0];
@@ -86,10 +88,64 @@ VectorXd GradientSamsponErrorwrtEssentialMatrix(MatrixXd E, VectorXd pointImage1
     return gradient;
  }
 
-MatrixXd GradientEssentialMatrixwrtVecTrans(VectorXd point, VectorXd t, int factor, MatirxXd &JEVect){
+VectorXd QFromStereographic(VectorXd point, MatrixXd &J){
+    double x = point[0];
+    double y = point[1];
+    double z = point[2];
+
+    double alpha2 = (x*x) + (y*y) + (z*z);
+
+    double den = 1.0/(alpha2 + 1.0);
+
+    VectorXd q(4);
+    q << 2.0*x*den, 2.0*y*den, 2.0*z*den, (1-alpha2)*den;
+
+    J = MatrixXd(4, 3);
+
+    double alpha21 = alpha2 + 1.0;
+    double xy = x*y;
+    double xz = x*z;
+    double yz = y*z;
+
+    double factor = -4/(alpha21*alpha21);
+
+    J << 0.5*((2.0*(x*x))-alpha21), xy, xz, x,
+         xy, 0.5*((2.0*(y*y))-alpha21), yz, y,
+         xz, yz, 0.5*((2.0*(z*z))-alpha21), z;
+
+    J = J*factor;
+
+    return q;
+}
+
+VectorXd TFromStereographic(VectorXd point, MatrixXd &J, int d=1){
+    double x = point[0];
+    double y = point[1];
+
+    double alpha2 = (x*x) + (y*y);
+    double den = (d*1.0)/(1.0 + alpha2);
+
+    VectorXd t(3);
+    t << (1.0-alpha2)*den, 2*x*den, 2*y*den;
+
+    J = MatrixXd(3, 2);
+
+    double alpha21 = alpha2 + 1.0;
+    double xy = x*y;
+    double factor = (-4.0*d)/(alpha21*alpha21);
+
+    J << x, 0.5*((2*(x*x))-alpha21), xy,
+         y, xy, 0.5*((2.0*(y*y))-alpha21);
+
+    J = J*factor;
+
+    return t;
+}
+
+MatrixXd GradientEssentialMatrixwrtVecTrans(VectorXd point, VectorXd t, int factor, MatrixXd &JEVect){
     MatrixXd JqVec;
     VectorXd q = QFromStereographic(point, JqVec);
-    MatrixXd R = basicGeometry.Quaternion2Matrix(q);
+    MatrixXd R = basicGeometry::Quaternion2Matrix(q);
     double r1 = R(0, 0);
     double r2 = R(0, 1);
     double r3 = R(0, 2);
@@ -147,63 +203,11 @@ MatrixXd GradientEssentialMatrixwrtVecTrans(VectorXd point, VectorXd t, int fact
     JEVect = MatrixXd(JEVec.rows(), JEVec.cols()+JEp.cols());
     JEVect << JEVec, JEp;
 
-    MatrixXd E = BasicGeometry.CrossProductMatrix(t)*R;
+    MatrixXd E = basicGeometry::CrossProductMatrix(t)*R;
 
     return E;
 }
 
-VectorXd QFromStereographic(VectorXd point, MatrixXd &J){
-    double x = point[0];
-    double y = point[1];
-    double z = point[2];
-
-    double alpha2 = (x*x) + (y*y) + (z*z);
-
-    double den = 1.0/(alpha2 + 1.0);
-
-    VectorXd<double> q(4);
-    q << 2.0*x*den, 2.0*y*den, 2.0*z*den, (1-alpha2)*den;
-
-    J = MatrixXd<double>(4, 3);
-
-    double alpha21 = alpha2 + 1.0;
-    double xy = x*y;
-    double xz = x*z;
-    double yz = y*z;
-
-    double factor = -4/(alpha21*alpha21);
-
-    J << 0.5*((2.0*(x*x))-alpha21), xy, xz, x,
-         xy, 0.5*((2.0*(y*y))-alpha21), yz, y,
-         xz, yz, 0.5*((2.0*(z*z))-alpha21), z;
-
-    J = J*factor;
-
-    return q;
-}
-
-VectorXd TFromStereographic(VectorXd point, MatrixXd &J, int d=1){
-    double x = point[0];
-    double y = point[1];
-
-    double alpha2 = (x*x) + (y*y);
-    double den = (d*1.0)/(1.0 + alpha2);
-
-    VectorXd<double> t(3);
-    t << (1.0-alpha2)*den, 2*x*den, 2*y*den;
-
-    J = MatrixXd<double>(3, 2);
-
-    double alpha21 = alpha2 + 1.0;
-    xy = x*y;
-    double factor = (-4.0*d)/(alpha21*alpha21);
-
-    J << x, 0.5*((2*(x*x))-alpha21), xy,
-         y, xy, 0.5*((2.0*(y*y))-alpha21);
-
-    J = J*factor;
-
-    return t;
 }
 
 #endif // DIFF_H
