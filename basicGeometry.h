@@ -2,7 +2,8 @@
 #define BASICGEOMETRY_H
 
 #include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/SVD>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 #include <cmath>
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -10,6 +11,7 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::ComputeFullU;
 using Eigen::ComputeFullV;
+using cv::eigen2cv;
 
 namespace basicGeometry {
 
@@ -156,8 +158,15 @@ MatrixXd TriangulatePoints(const MatrixXd& projMat0, const MatrixXd& projMat1, c
         A.row(2) = points1(i, 1) * projMat1.row(2) - projMat1.row(1);
         A.row(3) = - points1(i, 0) * projMat1.row(2) + projMat1.row(0);
 
-        Eigen::JacobiSVD<MatrixXd> svd(A, ComputeFullU | ComputeFullV);
-        MatrixXd V = svd.matrixV().transpose();
+        cv::Mat a(4,4,CV_64FC1), vt(4,4,CV_64FC1);
+        cv::Mat w,u;
+        cv::eigen2cv(A, a);
+
+        cv::SVDecomp(a,w,u,vt);
+
+        MatrixXd V;
+        cv::cv2eigen(vt.t(), V);
+
         points.row(i) = V.col(V.cols()-1);
     }
 

@@ -1,15 +1,16 @@
-#include <QCoreApplication>
+//#include <QCoreApplication>
 //#include <opencv2/opencv.hpp>
+#include <QElapsedTimer>
+#include <QDebug>
 #include <string.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 #include "getCorrespondences/GetCorrespondences.cpp"
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/eigen.hpp>
+//#include <opencv2/opencv.hpp>
+//#include <opencv2/core/eigen.hpp>
 #include "epipolarGeometry.h"
-#include "diff.h"
 // #include "basicGeometry.h" (already included in "epipolarGeometry.h")
 
 using std::vector;
@@ -63,7 +64,7 @@ vector< vector<double> > loadtxt(string file){
     return data;
 }
 
-MatrixXd GemanMcClure(VectorXd x){
+MatrixXd GemanMcClure(vector<double> x){
 
     ArrayXd x1 = Map< ArrayXd >(x.data(), x.size());
     x1 = 1+x1;
@@ -88,27 +89,6 @@ MatrixXd GemanMcClure(VectorXd x){
     return output;
 }
 
-VectorXd OptimizeRotationAndTranslation(VectorXd vec, MatrixXd points0, MatrixXd points1, MatrixXd JREVect, int factor = 1){
-
-    int numEssentialInliers = points0.rows();
-    VectorXd p = vec.head(3);
-    VectorXd t = vec.tail(vec.size()-3);
-
-    MatrixXd JEVect;
-    MatrixXd E = diff::GradientEssentialMatrixwrtVecTrans(p, t, factor, JEVect);
-
-    MatrixXd JREE(numEssentialInliers, 9);
-    VectorXd RE(numEssentialInliers);
-
-    for(int i = 0; i < numEssentialInliers; i++){
-        JREE.row(i) = diff::GradientSamsponErrorwrtEssentialMatrix(E, points0.row(i), points1.row(i), RE(i));
-    }
-
-    JREVect = JREE*JEVect;
-
-    return RE;
-}
-
 Vector3d rad2deg(Vector3d v){
 
     double rollDeg, yawDeg, pitchDeg;
@@ -120,36 +100,36 @@ Vector3d rad2deg(Vector3d v){
     return Vector3d(rollDeg, yawDeg, pitchDeg);
 }
 
-std::ofstream createPoseFile(){
+std::ofstream createFile(string name){
 
-    string name = "calculated_poses.txt";
+    string filename = name + ".txt";
 
-    if(FILE *file = fopen(name.c_str(), "r")){
+    if(FILE *file = fopen(filename.c_str(), "r")){
 
         fclose(file);
 
         int i = 1;
-        name = "calculated_poses(" + std::to_string(i) +").txt";
+        filename = name + "(" + std::to_string(i) +").txt";
 
-        while(file = fopen(name.c_str(), "r")){
+        while((file = fopen(filename.c_str(), "r"))){
 
             i++;
             fclose(file);
-            name = "calculated_poses(" + std::to_string(i) +").txt";
+            filename = name + "(" + std::to_string(i) +").txt";
         }
     }
 
-    std::ofstream fichier(name);
+    std::ofstream fichier(filename);
 
     return fichier;
 }
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
+    //QCoreApplication a(argc, argv);
 
     // Paths to the sequences and poses folder
-    int indexSequence = 0;
+    int indexSequence = 7;
     string s_index = (indexSequence>9)
             ? std::to_string(indexSequence)
             : "0"+std::to_string(indexSequence);
@@ -166,7 +146,6 @@ int main(int argc, char *argv[])
 
     for(int i=0; i<vecPoses.size(); i++){
 
-        // might need to remove RowMajor?
         Matrix<double, 3, 4> mat = Map< Matrix<double, 3, 4, RowMajor> >(vecPoses[i].data());
         gt.push_back(mat);
 
@@ -179,7 +158,6 @@ int main(int argc, char *argv[])
 
     double *t2d = vec2d[0].data();
 
-    // might need to remove RowMajor?
     MatrixXd temp = Map< Matrix<double, 3, 4, RowMajor> >(t2d);
     MatrixXd K = temp.block(0, 0, 3, 3);
     MatrixXd Kinv = K.inverse();
@@ -192,7 +170,7 @@ int main(int argc, char *argv[])
     // Since matrices from eigen are displayed without one after the last row, this row is not displayed
     // Putting an endline manually after displaying a matrix fixes it and displays that last row
 
-    const int numberOfTests = 128;
+    const int numberOfTests = 500;
 
     // initialization of errors matrices
     MatrixXd errorT     =   Matrix<double, numberOfTests, 3, RowMajor>();  errorT.setZero();
@@ -205,9 +183,23 @@ int main(int argc, char *argv[])
     // usage of fastVisualOdometry (python version ln. 91-93)
     // todo
 
-    std::ofstream calculated_poses = createPoseFile();
+    std::ofstream calculated_poses = createFile("calculated_poses");
+
+    std::vector<MatrixXd> transformations;
+    MatrixXd m(4,4);
+    m << 1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0;
+    transformations.push_back(m);
+
+    std::cout << "processing..." << std::endl;
 
     for(int i=0; i<numberOfTests; i++){
+
+//        double time, subtime;
+//        QElapsedTimer timer, subtimer;
+//        timer.start();
 
         int indexImage1 = i;
         int indexImage2 = i+1;
@@ -251,7 +243,10 @@ int main(int argc, char *argv[])
         double scale = motionGt.block(0, 3, 3, 1).norm();
 
         // Estimated Motion
+//        subtimer.start();
         MatrixXd matches = getCorrespondences(imageFile1, imageFile2);
+//        subtime = subtimer.elapsed();
+
         MatrixXd matches1 = matches.block(0, 0, matches.rows(), 2);
         MatrixXd matches2 = matches.block(0, 2, matches.rows(), 2);
 
@@ -261,10 +256,25 @@ int main(int argc, char *argv[])
         cv::eigen2cv(matches1, m1);
         cv::Mat m2;
         cv::eigen2cv(matches2, m2);
-        cv::Mat Kcv;
+        cv::Mat Kcv(3,3,CV_64FC1);
         cv::eigen2cv(K, Kcv);
         cv::Mat mask;
-        cv::Mat E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+        cv::Mat E(3,3,CV_64FC1);
+
+        E = cv::findEssentialMat(m1, m2, Kcv, cv::RANSAC, 0.999, 1.0, mask);
+
+//        std::ofstream e("E.txt");
+
+//        for(int k=0; k<3; k++){
+
+//            for(int l=0; l<3; l++){
+
+//                e << E.at<double>(k, l) << " ";
+//            }
+//        }
+
+//        e.close();
+
         MatrixXd inliers;
         cv::cv2eigen(mask, inliers);
 
@@ -284,9 +294,13 @@ int main(int argc, char *argv[])
         MatrixXd points1 = (Kinv * (basicGeometry::Homogeneous(matchesInliers1).transpose())).transpose();
         MatrixXd points2 = (Kinv * (basicGeometry::Homogeneous(matchesInliers2).transpose())).transpose();
 
-        MatrixXd Ematrix;
-        cv::cv2eigen(E, Ematrix);
-        decomposedMatrix dm = DecomposeEssentialMatrix(Ematrix, points1, points2);
+        decomposedMatrix dm = DecomposeEssentialMatrix(E, points1, points2);
+
+//        std::cout << "R:" << std::endl;
+//        std::cout << dm.R << std::endl;
+
+//        std::cout << "t:" << std::endl;
+//        std::cout << dm.t << std::endl;
 
         //traj
 
@@ -304,44 +318,46 @@ int main(int argc, char *argv[])
             }
         }
 
-        points1 = temp1;
-        points2 = temp2;
-
         errorT.row(i) = dm.t - tGt;
         errorR.row(i) = rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(dm.R)) - rad2deg(basicGeometry::RotationMatrix2PitchYawRoll(RGt));
 
         Vector4d q = basicGeometry::Matrix2Quaternion(dm.R);
         Vector3d u = basicGeometry::EquatorialPointFromQ(q);
 
-        int factor = 1;
-        Vector2d v = basicGeometry::EquatorialPointFromT(dm.t, factor);
-        VectorXd vec(5);
-        vec << u, v;
+        VectorXd tPoses;
+        MatrixXd Rt = dm.R.transpose();
 
-        auto fun = [=](VectorXd x){
-            MatrixXd JREVect;
-            return OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
-        };
-        auto jac = [=](VectorXd x){
-            MatrixXd JREVect;
-            OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
-            return JREVect;
-        };
-        auto loss = [=](VectorXd x){
-            return GemanMcClure(x);
-        };
+        tPoses = -Rt * dm.t;
+        tPoses = tPoses * scale;
+        tPoses.conservativeResize(4);
+        tPoses(3) = 0;
 
-        MatrixXd temp;
-        VectorXd vec2 = OptimizeRotationAndTranslation(vec, points1, points2, temp, factor);
-        vec2 = vec2 * vec2;
-        errorStart(i) = 0.5*(loss(vec2)(0));
+        MatrixXd transfo = Rt;
+        transfo.conservativeResize(4,4);
+        transfo.col(3) = tPoses;
+        transfo.row(3) << 0, 0, 0, 1;
 
-        for(int l=0; l<3; l++){
+        MatrixXd Pose = transformations.back() * transfo;
 
-            calculated_poses << dm.R(l,0) << " ";
-            calculated_poses << dm.R(l,1) << " ";
-            calculated_poses << dm.R(l,2) << " ";
-            calculated_poses << dm.t(l) << " ";
+        transformations.push_back(Pose);
+
+//        time = timer.elapsed();
+
+//        qDebug() << "Time elapsed for subcode: " << subtime;
+//        qDebug() << "Time elapsed for the whole loop: " << time;
+//        qDebug() << "Percentage of time taken by subcode: " << subtime / time * 100 << "%";
+    }
+
+    std::cout << "Algorithm OK." << std::endl;
+
+    for(int t=0; t<transformations.size(); t++){
+
+        for(int l=0; l<4; l++){
+
+            for(int m=0; m<4; m++){
+
+                calculated_poses << transformations[t](l, m) << " ";
+            }
         }
 
         calculated_poses << std::endl;
@@ -349,9 +365,10 @@ int main(int argc, char *argv[])
 
     calculated_poses.close();
 
+    std::cout << "Pose file written." << std::endl;
+
     errorT = errorT.cwiseAbs();
     errorR = errorR.cwiseAbs();
 
-    std::cout << "Algorithm OK." << std::endl;
-    return a.exec();
+    //return a.exec();
 }
