@@ -1,17 +1,24 @@
 //#include <QCoreApplication>
-//#include <opencv2/opencv.hpp>
 #include <QElapsedTimer>
 #include <QDebug>
+
 #include <string.h>
 #include <iostream>
 #include <vector>
 #include <fstream>
-//#include <eigen3/Eigen/Dense>
-#include "getCorrespondences/GetCorrespondences.cpp"
-//#include <opencv2/opencv.hpp>
-//#include <opencv2/core/eigen.hpp>
+
+// #include <Eigen/Dense>        /*(already included in "BasicGeometry.h")*/
+#include <unsupported/Eigen/NonLinearOptimization>
+#include <unsupported/Eigen/NumericalDiff>
+
+// #include <opencv2/opencv.hpp>        /*(already included in "BasicGeometry.h")*/
+// #include <opencv2/core/eigen.hpp>    /*(already included in "BasicGeometry.h")*/
+
+// #include "basicGeometry.h"           /*(already included in "epipolarGeometry.h")*/
 #include "epipolarGeometry.h"
-// #include "basicGeometry.h" (already included in "epipolarGeometry.h")
+#include "diff.h"
+
+#include "getCorrespondences/GetCorrespondences.cpp"
 
 using std::vector;
 using std::string;
@@ -89,7 +96,7 @@ MatrixXd GemanMcClure(VectorXd x){
     return output;
 }
 
-VectorXd OptimizeRotationAndTranslation(VectorXd vec, MatrixXd points0, MatrixXd points1, MatrixXd JREVect, int factor = 1){
+void OptimizeRotationAndTranslation(const VectorXd& vec, const MatrixXd& points0, const MatrixXd& points1, MatrixXd& JREVect, VectorXd& RE, int factor = 1){
 
     int numEssentialInliers = points0.rows();
     VectorXd p = vec.head(3);
@@ -99,15 +106,13 @@ VectorXd OptimizeRotationAndTranslation(VectorXd vec, MatrixXd points0, MatrixXd
     MatrixXd E = diff::GradientEssentialMatrixwrtVecTrans(p, t, factor, JEVect);
 
     MatrixXd JREE(numEssentialInliers, 9);
-    VectorXd RE(numEssentialInliers);
+    RE.resize(numEssentialInliers);
 
     for(int i = 0; i < numEssentialInliers; i++){
         JREE.row(i) = diff::GradientSamsponErrorwrtEssentialMatrix(E, points0.row(i), points1.row(i), RE(i));
     }
 
     JREVect = JREE*JEVect;
-
-    return RE;
 }
 
 Vector3d rad2deg(Vector3d v){
@@ -144,6 +149,50 @@ std::ofstream createFile(string name){
 
     return fichier;
 }
+
+// Experimental
+
+// Generic functor
+template<typename _Scalar, int NX = Eigen::Dynamic, int NY = Eigen::Dynamic>
+struct Functor
+{
+    typedef _Scalar Scalar;
+    enum {
+        InputsAtCompileTime = NX,
+        ValuesAtCompileTime = NY
+};
+typedef Eigen::Matrix<Scalar,InputsAtCompileTime,1> InputType;
+typedef Eigen::Matrix<Scalar,ValuesAtCompileTime,1> ValueType;
+typedef Eigen::Matrix<Scalar,ValuesAtCompileTime,InputsAtCompileTime> JacobianType;
+
+int m_inputs, m_values;
+
+Functor() : m_inputs(InputsAtCompileTime), m_values(ValuesAtCompileTime) {}
+Functor(int inputs, int values) : m_inputs(inputs), m_values(values) {}
+
+int inputs() const { return m_inputs; }
+int values() const { return m_values; }
+
+};
+
+struct my_functor : Functor<double>
+{
+    my_functor(MatrixXd points0, MatrixXd points1, int factor): Functor<double>(5, points0.rows()), m_points0(points0), m_points1(points1), m_factor(factor) {}
+    int operator()(const Eigen::VectorXd &x, Eigen::VectorXd &fvec) const
+    {
+        MatrixXd JREVect;
+
+        OptimizeRotationAndTranslation(x, m_points0, m_points1, JREVect, fvec, m_factor);
+
+        return 0;
+    }
+
+private:
+    MatrixXd m_points0, m_points1;
+    int m_factor;
+};
+
+// ----
 
 int main(int argc, char *argv[])
 {
@@ -204,15 +253,14 @@ int main(int argc, char *argv[])
     // usage of fastVisualOdometry (python version ln. 91-93)
     // todo
 
-    std::ofstream calculated_poses = createFile("calculated_poses");
-
-    std::vector<MatrixXd> transformations;
+    std::vector<MatrixXd> traj, trajOpt;
     MatrixXd m(4,4);
     m << 1.0, 0.0, 0.0, 0.0,
          0.0, 1.0, 0.0, 0.0,
          0.0, 0.0, 1.0, 0.0,
          0.0, 0.0, 0.0, 1.0;
-    transformations.push_back(m);
+    traj.push_back(m);
+    trajOpt.push_back(m);
 
     std::cout << "processing..." << std::endl;
 
@@ -263,7 +311,7 @@ int main(int argc, char *argv[])
 
         double scale = motionGt.block(0, 3, 3, 1).norm();
 
-        // Estimated Motion
+        // Estimated Motion/*(already included in "BasicGeometry.h")*/
 //        subtimer.start();
         MatrixXd matches = getCorrespondences(imageFile1, imageFile2);
 //        subtime = subtimer.elapsed();
@@ -323,8 +371,25 @@ int main(int argc, char *argv[])
 //        std::cout << "t:" << std::endl;
 //        std::cout << dm.t << std::endl;
 
-        //traj
+        // Updating the transformation matrix vector
+        VectorXd tPoses;
+        MatrixXd Rt = dm.R.transpose();
 
+        tPoses = -Rt * dm.t;
+        tPoses = tPoses * scale;
+        tPoses.conservativeResize(4);
+        tPoses(3) = 0;
+
+        MatrixXd transfo = Rt;
+        transfo.conservativeResize(4,4);
+        transfo.col(3) = tPoses;
+        transfo.row(3) << 0, 0, 0, 1;
+
+        MatrixXd Pose = traj.back() * transfo;
+
+        traj.push_back(Pose);
+
+        // Optimization
         int r = points1.rows();
         l = 0;
         MatrixXd temp1(0, points1.cols());
@@ -350,40 +415,63 @@ int main(int argc, char *argv[])
         VectorXd vec(5);
         vec << u, v;
 
-        auto fun = [=](VectorXd x){
-            MatrixXd JREVect;
-            return OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
-        };
-        auto jac = [=](VectorXd x){
-            MatrixXd JREVect;
-            OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
-            return JREVect;
-        };
+//        auto fun = [=](VectorXd x) -> VectorXd{
+//            MatrixXd JREVect;
+//            return OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
+//        };
+//        auto jac = [=](VectorXd x) -> MatrixXd{
+//            MatrixXd JREVect;
+//            OptimizeRotationAndTranslation(x, points1, points2, JREVect, factor);
+//            return JREVect;
+//        };
         auto loss = [=](VectorXd x){
             return GemanMcClure(x);
         };
 
+        // Experimental
+
+        my_functor functor(points1, points2, factor);
+
+        Eigen::NumericalDiff<my_functor> numDiff(functor);
+        Eigen::LevenbergMarquardt<Eigen::NumericalDiff<my_functor> > lm(numDiff);
+
+        lm.parameters.maxfev = 50;
+        lm.parameters.ftol = 1.0e-8;
+        lm.parameters.gtol = 1.0e-8;
+        lm.parameters.xtol = 1.0e-8;
+
+        lm.minimize(vec);
+
+        MatrixXd J;
+        MatrixXd ROpt = basicGeometry::Quaternion2Matrix(diff::QFromStereographic(vec, J));
+        VectorXd vEnd(2);
+        vEnd << vec(3), vec(4);
+        VectorXd TOpt = diff::TFromStereographic(vEnd, J, factor);
+
+        VectorXd tOptPoses;
+        MatrixXd ROptt = ROpt.transpose();
+
+        tOptPoses = -ROptt * TOpt;
+        tOptPoses = tOptPoses * scale;
+        tOptPoses.conservativeResize(4);
+        tOptPoses(3) = 0;
+
+        MatrixXd transfoOpt = ROptt;
+        transfoOpt.conservativeResize(4,4);
+        transfoOpt.col(3) = tOptPoses;
+        transfoOpt.row(3) << 0, 0, 0, 1;
+
+        MatrixXd PoseOpt = trajOpt.back() * transfoOpt;
+
+        trajOpt.push_back(PoseOpt);
+
+        // ----
+
         MatrixXd temp;
-        VectorXd vec2 = OptimizeRotationAndTranslation(vec, points1, points2, temp, factor);
-        vec2 = vec2 * vec2;
+        VectorXd vec2;
+        OptimizeRotationAndTranslation(vec, points1, points2, temp, vec2, factor);
+        vec2 = vec2.array() * vec2.array();
         errorStart(i) = 0.5*(loss(vec2)(0));
-
-        VectorXd tPoses;
-        MatrixXd Rt = dm.R.transpose();
-
-        tPoses = -Rt * dm.t;
-        tPoses = tPoses * scale;
-        tPoses.conservativeResize(4);
-        tPoses(3) = 0;
-
-        MatrixXd transfo = Rt;
-        transfo.conservativeResize(4,4);
-        transfo.col(3) = tPoses;
-        transfo.row(3) << 0, 0, 0, 1;
-
-        MatrixXd Pose = transformations.back() * transfo;
-
-        transformations.push_back(Pose);
 
 //        time = timer.elapsed();
 
@@ -394,22 +482,28 @@ int main(int argc, char *argv[])
 
     std::cout << "Algorithm OK." << std::endl;
 
-    for(int t=0; t<transformations.size(); t++){
+    std::ofstream calculated_poses = createFile("calculated_poses");
+    std::ofstream optimized_poses = createFile("optimized_poses");
+
+    for(int t=0; t<traj.size(); t++){
 
         for(int l=0; l<4; l++){
 
             for(int m=0; m<4; m++){
 
-                calculated_poses << transformations[t](l, m) << " ";
+                calculated_poses << traj[t](l, m) << " ";
+                optimized_poses << trajOpt[t](l,m) << " ";
             }
         }
 
         calculated_poses << std::endl;
+        optimized_poses << std::endl;
     }
 
     calculated_poses.close();
+    optimized_poses.close();
 
-    std::cout << "Pose file written." << std::endl;
+    std::cout << "Pose files written." << std::endl;
 
     errorT = errorT.cwiseAbs();
     errorR = errorR.cwiseAbs();

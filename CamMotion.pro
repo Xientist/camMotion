@@ -21,6 +21,7 @@ SOURCES += \
         main.cpp
 
 INCLUDEPATH += /usr/local/include/opencv4/
+INCLUDEPATH += /usr/local/include/eigen3/
 
 LIBS += /usr/local/lib/libopencv_core.so
 LIBS += /usr/local/lib/libopencv_highgui.so

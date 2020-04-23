@@ -1,12 +1,13 @@
 #ifndef BASICGEOMETRY_H
 #define BASICGEOMETRY_H
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <cmath>
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::ComputeFullU;
@@ -15,7 +16,7 @@ using cv::eigen2cv;
 
 namespace basicGeometry {
 
-MatrixXd CrossProductMatrix(VectorXd vec){
+MatrixXd CrossProductMatrix(const VectorXd& vec){
     MatrixXd crossMat = MatrixXd::Zero(3, 3);
     //1st line
     crossMat(0, 1) = -vec[2];
@@ -54,7 +55,7 @@ Vector3d RotationMatrix2PitchYawRoll(const MatrixXd& R){
     return Vector3d(roll, yaw, pitch);
 }
 
-MatrixXd Quaternion2Matrix(VectorXd q){
+MatrixXd Quaternion2Matrix(const VectorXd& q){
     MatrixXd M(3, 3);
     double w = q[0];
     double x = q[1];
@@ -134,7 +135,7 @@ Vector3d EquatorialPointFromQ(const Vector4d& q){
     return Vector3d(q0*den, q1*den, q2*den);
 }
 
-Vector2d EquatorialPointFromT(Vector3d t, int d=1){
+Vector2d EquatorialPointFromT(const Vector3d& t, int d=1){
     double t0 = t(0);
     double t1 = t(1);
     double t2 = t(2);

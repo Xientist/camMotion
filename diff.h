@@ -1,8 +1,8 @@
 #ifndef DIFF_H
 #define DIFF_H
 
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/SVD>
+// #include <Eigen/Dense>
+#include <Eigen/SVD>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 #include "basicGeometry.h"
@@ -15,7 +15,7 @@ using Eigen::VectorXd;
 
 namespace diff{
 
-MatrixXd JacobianRotationwrtQuaternion(VectorXd q){
+MatrixXd JacobianRotationwrtQuaternion(const VectorXd& q){
     MatrixXd J(9, 4);
     double w2 = 2.0*q[0];
     double x2 = 2.0*q[1];
@@ -39,7 +39,7 @@ MatrixXd JacobianRotationwrtQuaternion(VectorXd q){
     return J;
 }
 
-VectorXd GradientSamsponErrorwrtEssentialMatrix(MatrixXd E, VectorXd pointImage1, VectorXd pointImage2, double &error){
+VectorXd GradientSamsponErrorwrtEssentialMatrix(const MatrixXd& E, const VectorXd& pointImage1, const VectorXd& pointImage2, double &error){
     double e1 = E(0, 0);
     double e2 = E(0, 1);
     double e3 = E(0, 2);
@@ -88,7 +88,7 @@ VectorXd GradientSamsponErrorwrtEssentialMatrix(MatrixXd E, VectorXd pointImage1
     return gradient;
  }
 
-VectorXd QFromStereographic(VectorXd point, MatrixXd &J){
+VectorXd QFromStereographic(const VectorXd& point, MatrixXd& J){
     double x = point[0];
     double y = point[1];
     double z = point[2];
@@ -118,7 +118,7 @@ VectorXd QFromStereographic(VectorXd point, MatrixXd &J){
     return q;
 }
 
-VectorXd TFromStereographic(VectorXd point, MatrixXd &J, int d=1){
+VectorXd TFromStereographic(const VectorXd& point, MatrixXd& J, int d=1){
     double x = point[0];
     double y = point[1];
 
@@ -142,7 +142,7 @@ VectorXd TFromStereographic(VectorXd point, MatrixXd &J, int d=1){
     return t;
 }
 
-MatrixXd GradientEssentialMatrixwrtVecTrans(VectorXd point, VectorXd t, int factor, MatrixXd &JEVect){
+MatrixXd GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, int factor, MatrixXd& JEVect){
     MatrixXd JqVec;
     VectorXd q = QFromStereographic(point, JqVec);
     MatrixXd R = basicGeometry::Quaternion2Matrix(q);
