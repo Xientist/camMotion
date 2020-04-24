@@ -6,10 +6,12 @@
 #include <iostream>
 
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using Eigen::Matrix;
 using Eigen::Dynamic;
 using Eigen::RowMajor;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using Eigen::JacobiSVD;
 using Eigen::ComputeFullU;
 using Eigen::ComputeFullV;
@@ -17,106 +19,55 @@ using std::vector;
 using std::cout;
 using std::endl;
 
-struct decomposedMatrix{
+void DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& points0, const MatrixXd& points1, Matrix3d& R, Vector3d& T, MatrixXd& pointsOut, VectorXd& inliers){
 
-    MatrixXd R;
-    VectorXd t;
-    VectorXd inliers;
-    MatrixXd points;
-};
+    vector<Matrix3d> rotations;
+    rotations.push_back(Matrix3d());
+    rotations.push_back(Matrix3d());
 
-decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& points0, const MatrixXd& points1){
+    std::vector<Vector3d> translations;
+    translations.push_back(Vector3d());
+    translations.push_back(Vector3d());
 
-    vector<MatrixXd> rotations;
-    rotations.push_back(MatrixXd(3,3));
-    rotations.push_back(MatrixXd(3,3));
+    Matrix3d e, U, Vt, W, Z, R1, R2, S;
 
-    std::vector<VectorXd> translations;
-    translations.push_back(VectorXd(3));
-    translations.push_back(VectorXd(3));
+    W << 0, 1, 0,
+        -1, 0, 0,
+         0, 0, 1;
 
-//    JacobiSVD<MatrixXd> svd(E, ComputeFullU | ComputeFullV);
+    Z << 0, 1, 0,
+        -1, 0, 0,
+         0, 0, 0;
 
-//    U = svd.matrixU();
-//    S = svd.singularValues();
-//    V = svd.matrixV();
+    cv::cv2eigen(E, e);
 
-//    cv::Mat E(3,3,CV_64FC1);
-    cv::Mat W(3,3,CV_64FC1, double(0)), Z(3,3,CV_64FC1, double(0));
-    cv::Mat R1(3,3,CV_64FC1), R2(3,3,CV_64FC1), S(3,3,CV_64FC1);
+    JacobiSVD<Matrix3d> svd(e, ComputeFullU | ComputeFullV);
+    U = svd.matrixU();
+    Vt = svd.matrixV().transpose();
 
-//    std::string filename = "E.txt";
-//    std::ifstream fileStream(filename);
+    R1 = U * W * Vt;
+    R2 = U * W.transpose() * Vt;
 
-//    int cols = 3;
-//    double m;
-//    int cnt = 0;//index starts from 0
-//    while (fileStream >> m)
-//    {
-//        int temprow = cnt / cols;
-//        int tempcol = cnt % cols;
-//        E.at<double>(temprow, tempcol) = m;
-//        cnt++;
-//    }
-
-//    fileStream.close();
-
-    cv::Mat t(3,1,CV_64FC1);
-
-    W.at<double>(0,1) = 1;
-    W.at<double>(1,0) = -1;
-    W.at<double>(2,2) = 1;
-
-    Z.at<double>(1,0) = -1;
-    Z.at<double>(0,1) = 1;
-
-    cv::Mat w,u,vt;
-
-    cv::SVDecomp(E,w,u,vt);
-
-//    std::cout << w << std::endl;
-//    std::cout << u << std::endl;
-//    std::cout << vt << std::endl;
-
-    R1 = u * W * vt;
-    R2 = u * W.t() * vt;
-
-    if (cv::determinant(R1) < 0)
+    if (R1.determinant() < 0)
     {
         R1 *= -1;
     }
-    if (cv::determinant(R2) < 0)
+    if (R2.determinant() < 0)
     {
         R2 *= -1;
     }
 
-    S = u * Z * u.t();
+    S = U * Z * U.transpose();
 
-//    std::cout << "R1" << std::endl;
-//    std::cout << R1 << std::endl;
-
-//    std::cout << "R2" << std::endl;
-//    std::cout << R2 << std::endl;
-
-    S = u * Z * u.t();
-//    std::cout << "S" << std::endl;
-//    std::cout << S << std::endl;
-
-    t.at<double>(0,0) = S.at<double>(2,1);
-    t.at<double>(1,0) = S.at<double>(0,2);
-    t.at<double>(2,0) = S.at<double>(1,0);
-
-//    std::cout << "t" << std::endl;
-//    std::cout << t << std::endl;
-
-    VectorXd T;
-    cv::cv2eigen(t, T);
+    T(0) = S(2,1);
+    T(1) = S(0,2);
+    T(2) = S(1,0);
 
     translations[0] = T;
     translations[1] = -T;
 
-    cv::cv2eigen(R1, rotations[0]);
-    cv::cv2eigen(R2, rotations[1]);
+    rotations[0] = R1;
+    rotations[1] = R2;
 
     MatrixXd projMat0(3,4);
     vector<MatrixXd> projMat1;
@@ -136,12 +87,11 @@ decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& poin
     projMat1[3] << rotations[1], translations[1];
 
     int bestProjMatSupport = 0, index = -1;
-    MatrixXd pointsOut;
-    VectorXd inliers;
 
     for(int i=0; i<4; i++){
 
-        MatrixXd points = basicGeometry::TriangulatePoints(projMat0, projMat1[i], points0, points1);
+        MatrixXd points;
+        basicGeometry::TriangulatePoints(projMat0, projMat1[i], points0, points1, points);
 
         MatrixXd proj0 = ( projMat0 * (points.transpose()) ).transpose();
         MatrixXd proj1 = ( projMat1[i] * (points.transpose()) ).transpose();
@@ -182,36 +132,34 @@ decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& poin
         }
     }
 
-    MatrixXd R, points;
-
     switch(index){
 
         case 0:
 
             R = rotations[0];
             T = translations[0];
-            points = basicGeometry::Homogenize(pointsOut);
+            basicGeometry::Homogenize(pointsOut);
             break;
 
         case 1:
 
             R = rotations[0];
             T = translations[1];
-            points = basicGeometry::Homogenize(pointsOut);
+            basicGeometry::Homogenize(pointsOut);
             break;
 
         case 2:
 
             R = rotations[1];
             T = translations[0];
-            points = basicGeometry::Homogenize(pointsOut);
+            basicGeometry::Homogenize(pointsOut);
             break;
 
         case 3:
 
             R = rotations[1];
             T = translations[1];
-            points = basicGeometry::Homogenize(pointsOut);
+            basicGeometry::Homogenize(pointsOut);
             break;
 
         default:
@@ -222,21 +170,13 @@ decomposedMatrix DecomposeEssentialMatrix(const cv::Mat& E, const MatrixXd& poin
                     0,  0,  1;
             T = VectorXd(3);
             T.setZero();
-            points = MatrixXd();
+            pointsOut = MatrixXd();
             inliers = VectorXd(points0.rows());
             inliers.setZero();
             break;
     }
 
     T.normalize();
-
-    decomposedMatrix dm;
-    dm.R = R;
-    dm.t = T;
-    dm.points = points;
-    dm.inliers = inliers;
-
-    return dm;
 }
 
 #endif // EPIPOLARGEOMETRY_H

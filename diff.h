@@ -15,8 +15,8 @@ using Eigen::VectorXd;
 
 namespace diff{
 
-MatrixXd JacobianRotationwrtQuaternion(const VectorXd& q){
-    MatrixXd J(9, 4);
+void JacobianRotationwrtQuaternion(const VectorXd& q, MatrixXd& J){
+    J = MatrixXd(9, 4);
     double w2 = 2.0*q[0];
     double x2 = 2.0*q[1];
     double y2 = 2.0*q[2];
@@ -35,8 +35,6 @@ MatrixXd JacobianRotationwrtQuaternion(const VectorXd& q){
         -y2, z2, -w2, x2,
          x2, w2, z2, y2,
          0, -x4, -y4, 0;
-
-    return J;
 }
 
 VectorXd GradientSamsponErrorwrtEssentialMatrix(const MatrixXd& E, const VectorXd& pointImage1, const VectorXd& pointImage2, double &error){
@@ -88,7 +86,7 @@ VectorXd GradientSamsponErrorwrtEssentialMatrix(const MatrixXd& E, const VectorX
     return gradient;
  }
 
-VectorXd QFromStereographic(const VectorXd& point, MatrixXd& J){
+void QFromStereographic(const VectorXd& point, MatrixXd& J, VectorXd& q){
     double x = point[0];
     double y = point[1];
     double z = point[2];
@@ -97,7 +95,7 @@ VectorXd QFromStereographic(const VectorXd& point, MatrixXd& J){
 
     double den = 1.0/(alpha2 + 1.0);
 
-    VectorXd q(4);
+    q = VectorXd(4);
     q << 2.0*x*den, 2.0*y*den, 2.0*z*den, (1-alpha2)*den;
 
     J = MatrixXd(4, 3);
@@ -114,18 +112,16 @@ VectorXd QFromStereographic(const VectorXd& point, MatrixXd& J){
          xz, yz, 0.5*((2.0*(z*z))-alpha21), z;
 
     J = J*factor;
-
-    return q;
 }
 
-VectorXd TFromStereographic(const VectorXd& point, MatrixXd& J, int d=1){
+void TFromStereographic(const VectorXd& point, MatrixXd& J, VectorXd& t, int d=1){
     double x = point[0];
     double y = point[1];
 
     double alpha2 = (x*x) + (y*y);
     double den = (d*1.0)/(1.0 + alpha2);
 
-    VectorXd t(3);
+    t = VectorXd(3);
     t << (1.0-alpha2)*den, 2*x*den, 2*y*den;
 
     J = MatrixXd(3, 2);
@@ -138,14 +134,14 @@ VectorXd TFromStereographic(const VectorXd& point, MatrixXd& J, int d=1){
          y, xy, 0.5*((2.0*(y*y))-alpha21);
 
     J = J*factor;
-
-    return t;
 }
 
-MatrixXd GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, int factor, MatrixXd& JEVect){
+void GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, int factor, MatrixXd& JEVect, MatrixXd& E){
     MatrixXd JqVec;
-    VectorXd q = QFromStereographic(point, JqVec);
-    MatrixXd R = basicGeometry::Quaternion2Matrix(q);
+    VectorXd q;
+    QFromStereographic(point, JqVec, q);
+    MatrixXd R;
+    basicGeometry::Quaternion2Matrix(q, R);
     double r1 = R(0, 0);
     double r2 = R(0, 1);
     double r3 = R(0, 2);
@@ -157,7 +153,7 @@ MatrixXd GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, 
     double r9 = R(2, 2);
 
     MatrixXd Jtp;
-    t = TFromStereographic(t, Jtp, factor);
+    TFromStereographic(t, Jtp, t, factor);
     double a = t[0];
     double b = t[1];
     double c = t[2];
@@ -182,7 +178,8 @@ MatrixXd GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, 
     JER(8, 5) = a;
     JER(8, 2) = -b;
 
-    MatrixXd JRq = JacobianRotationwrtQuaternion(q);
+    MatrixXd JRq;
+    JacobianRotationwrtQuaternion(q, JRq);
     MatrixXd JRVec = JRq*JqVec;
 
     MatrixXd JEt(9, 3);
@@ -203,9 +200,8 @@ MatrixXd GradientEssentialMatrixwrtVecTrans(const VectorXd& point, VectorXd& t, 
     JEVect = MatrixXd(JEVec.rows(), JEVec.cols()+JEp.cols());
     JEVect << JEVec, JEp;
 
-    MatrixXd E = basicGeometry::CrossProductMatrix(t)*R;
-
-    return E;
+    basicGeometry::CrossProductMatrix(t, E);
+    E = E*R;
 }
 
 }
