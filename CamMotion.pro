@@ -45,3 +45,4 @@ HEADERS += \
     diff.h
 
 QMAKE_CXXFLAGS += -mpopcnt
+QMAKE_CXXFLAGS_RELEASE += -Ofast

@@ -19,6 +19,19 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
     cv::Mat image1OpenCV = cv::imread(fileImage1, cv::IMREAD_GRAYSCALE);
     cv::Mat image2OpenCV = cv::imread(fileImage2, cv::IMREAD_GRAYSCALE);
 
+    /*
+    cv::Size size1 = image1OpenCV.size();
+    size1.width = size1.width / 2.0;
+    size1.height = size1.height / 2.0;
+
+    cv::Size size2 = image2OpenCV.size();
+    size2.width = size2.width / 2.0;
+    size2.height = size2.height / 2.0;
+
+    cv::resize(image1OpenCV, image1OpenCV, size1);
+    cv::resize(image2OpenCV, image2OpenCV, size2);
+    */
+
     int width(image1OpenCV.cols), height(image1OpenCV.rows);
 
 //    std::cout << "width x height " << width << "x" << height << std::endl;
@@ -88,6 +101,9 @@ MatrixXd getCorrespondences(std::string fileImage1, std::string fileImage2)
     delete isprocessor;
     delete [] cornerImage1;
     delete [] cornerImage2;
+
+    delete [] image1;
+    delete [] image2;
 
     return corners;
 }

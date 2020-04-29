@@ -45,6 +45,7 @@ vector< vector<double> > loadtxt(string file){
         while(ss >> value){
 
             data.back().push_back(value);
+            i++;
         }
 
         // in case a non-numeric value was found in front of the useful data
@@ -191,7 +192,7 @@ private:
 int main(int argc, char *argv[]){
 
     // Paths to the sequences and poses folder
-    int indexSequence = 5;
+    int indexSequence = 0;
     string s_index = (indexSequence>9)
             ? std::to_string(indexSequence)
             : "0"+std::to_string(indexSequence);
@@ -199,6 +200,7 @@ int main(int argc, char *argv[]){
     string imageFolder = "dataset/sequences/" + s_index + "/image_0/";
     string groundTruthFile = "poses/" + s_index + ".txt";
     string calibFile = "dataset/sequences/" + s_index + "/calib.txt";
+    string imageExtension =  ".png"; // ".tiff" for the images of the ARTEMIPS vehicle
 
     // Loading ground truths from file
     vector< vector<double> > vecPoses;
@@ -219,7 +221,8 @@ int main(int argc, char *argv[]){
     double *t2d = vec2d[0].data();
 
     MatrixXd temp = Map< Matrix<double, 3, 4, RowMajor> >(t2d);
-    MatrixXd K = temp.block(0, 0, 3, 3);
+//  MatrixXd temp = Map< Matrix<double, 3, 3, RowMajor> >(t2d); // If calib.txt is the 3x3 K matrix itself
+    MatrixXd K = temp.block(0,0,3,3);
     MatrixXd Kinv = K.inverse();
 
     const int numberOfTests = 500;
@@ -238,6 +241,7 @@ int main(int argc, char *argv[]){
          0.0, 1.0, 0.0, 0.0,
          0.0, 0.0, 1.0, 0.0,
          0.0, 0.0, 0.0, 1.0;
+    m.block(0, 0, 3, 4) = gt[0];
     traj.push_back(m);
     trajOpt.push_back(m);
 
@@ -251,6 +255,7 @@ int main(int argc, char *argv[]){
 
     for(int i=0; i<numberOfTests; i++){
 
+        //std::cout << "loop " << i << std::endl;
         int indexImage1 = i;
         int indexImage2 = i+1;
 
@@ -263,8 +268,8 @@ int main(int argc, char *argv[]){
         sindex1 = std::string(number_of_zeros - sindex1.length(), '0') + sindex1;
         sindex2 = std::string(number_of_zeros - sindex2.length(), '0') + sindex2;
 
-        string imageFile1 = imageFolder + sindex1 + ".png";
-        string imageFile2 = imageFolder + sindex2 + ".png";
+        string imageFile1 = imageFolder + sindex1 + imageExtension;
+        string imageFile2 = imageFolder + sindex2 + imageExtension;
 
         // Motion from ground truth
         MatrixXd gt1(4,4);
